@@ -1,0 +1,5 @@
+# git忽略 node_modules 文件夹
+node_modules/
+frontend/.vscode/settings.json
+./trae 
+backend/.idea/
