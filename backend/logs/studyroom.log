@@ -1,0 +1,13 @@
+2026-02-02 21:25:08.948 [http-nio-8080-exec-2] INFO  o.a.c.c.C.[.[localhost].[/api] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-02 21:25:08.949 [http-nio-8080-exec-2] INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-02-02 21:25:08.950 [http-nio-8080-exec-2] INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-02-02 21:25:09.013 [http-nio-8080-exec-2] INFO  c.s.config.RequestLoggingInterceptor - [REQUEST] POST http://localhost:8080/api/auth/login?username=admin&password=123456
+Headers: {sec-fetch-mode=cors, content-length=0, referer=http://localhost:5173/, sec-fetch-site=same-site, accept-language=zh-CN,zh;q=0.9, cookie=JSESSIONID=B2A0464056DEB51BAFE85101B84421E7; Admin-Token=eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImxvZ2luX3VzZXJfa2V5IjoiM2YyNzViOWEtNmM3Ni00NTZiLTllZjItNTk5YTc1YmZhNTdhIn0.S6BmFo17yw7C4jH9danJSoM11Zdadwt3Zt1Wz2oTZ85KsbwlXhSwLn5xhO5QbogDP38oskcCs0sqUng1dsevog; size=default, origin=http://localhost:5173, pragma=no-cache, accept=application/json, text/plain, */*, sec-ch-ua="Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145", sec-ch-ua-mobile=?1, sec-ch-ua-platform="iOS", host=localhost:8080, connection=keep-alive, cache-control=no-cache, accept-encoding=gzip, deflate, br, zstd, user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1, sec-fetch-dest=empty}
+2026-02-02 21:25:09.050 [http-nio-8080-exec-2] DEBUG c.s.m.UserMapper.selectByUsername - ==>  Preparing: SELECT * FROM users WHERE username = ?
+2026-02-02 21:25:09.077 [http-nio-8080-exec-2] DEBUG c.s.m.UserMapper.selectByUsername - ==> Parameters: admin(String)
+2026-02-02 21:25:09.150 [http-nio-8080-exec-2] DEBUG c.s.m.UserMapper.selectByUsername - <==      Total: 1
+2026-02-02 21:25:09.152 [http-nio-8080-exec-2] ERROR c.s.service.impl.UserServiceImpl - 密码：e10adc3949ba59abbe56e057f20f883e
+2026-02-02 21:25:09.153 [http-nio-8080-exec-2] ERROR c.s.service.impl.UserServiceImpl - 加密后的密码为：e10adc3949ba59abbe56e057f20f883e
+2026-02-02 21:25:09.280 [http-nio-8080-exec-2] INFO  c.s.config.RequestLoggingInterceptor - [RESPONSE] POST http://localhost:8080/api/auth/login 200 (272ms)
+2026-02-02 21:25:36.452 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-02-02 21:25:36.473 [SpringApplicationShutdownHook] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.

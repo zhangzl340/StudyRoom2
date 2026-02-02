@@ -12,6 +12,7 @@ import java.util.Map;
 
 @Tag(name = "认证模块")
 @RestController
+@CrossOrigin
 @RequestMapping("/auth")
 public class AuthController {
 

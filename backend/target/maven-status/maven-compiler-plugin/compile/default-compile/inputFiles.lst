@@ -1,9 +1,11 @@
+F:\自习室项目第二版\backend\src\main\java\com\studyroom\config\WebMvcConfig.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\exception\UnauthorizedException.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\StudyRoomApplication.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\mapper\RoomMapper.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\entity\CheckIn.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\service\CheckInService.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\service\impl\UserServiceImpl.java
+F:\自习室项目第二版\backend\src\main\java\com\studyroom\config\RequestLoggingInterceptor.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\mapper\SeatMapper.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\entity\Violation.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\mapper\ViolationMapper.java
@@ -21,6 +23,7 @@ F:\自习室项目第二版\backend\src\main\java\com\studyroom\entity\Room.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\exception\BusinessException.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\utils\JwtUtil.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\service\UserService.java
+F:\自习室项目第二版\backend\src\main\java\com\studyroom\controller\SqlController.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\controller\RoomController.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\mapper\CheckInMapper.java
 F:\自习室项目第二版\backend\src\main\java\com\studyroom\entity\Reservation.java

@@ -5,6 +5,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -29,6 +34,10 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 // 允许访问测试接口
                 .requestMatchers("/test/**").permitAll()
+                // 允许访问数据库测试接口
+                .requestMatchers("/sql/**").permitAll()
+                    // 运行访问用户接口
+                .requestMatchers("/user/**").permitAll()
                 // 其他请求需要认证
                 .anyRequest().authenticated()
             )
@@ -39,4 +48,6 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+
 }

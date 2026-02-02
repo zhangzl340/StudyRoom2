@@ -3,3 +3,5 @@ node_modules/
 frontend/.vscode/settings.json
 ./trae 
 backend/.idea/
+
+frontend/example

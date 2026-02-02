@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.studyroom.mapper.ReservationMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.studyroom.entity.Reservation">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="roomId" column="room_id" />
+        <result property="seatId" column="seat_id" />
+        <result property="startTime" column="start_time" />
+        <result property="endTime" column="end_time" />
+        <result property="status" column="status" />
+        <result property="reservationNo" column="reservation_no" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <!-- 根据用户ID查询预约 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE user_id = #{userId}
+        ORDER BY start_time DESC
+    </select>
+
+    <!-- 根据自习室ID查询预约 -->
+    <select id="selectByRoomId" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE room_id = #{roomId}
+        ORDER BY start_time DESC
+    </select>
+
+    <!-- 根据座位ID查询预约 -->
+    <select id="selectBySeatId" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE seat_id = #{seatId}
+        ORDER BY start_time DESC
+    </select>
+
+    <!-- 根据状态查询预约 -->
+    <select id="selectByStatus" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE status = #{status}
+        ORDER BY start_time DESC
+    </select>
+
+    <!-- 根据时间范围查询预约 -->
+    <select id="selectByTimeRange" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE room_id = #{roomId}
+          AND seat_id = #{seatId}
+          AND (
+            (start_time &lt; #{endTime} AND end_time &gt; #{startTime})
+            )
+          AND status IN ('pending', 'active')
+        ORDER BY start_time
+    </select>
+
+    <!-- 查询用户即将到来的预约 -->
+    <select id="selectUpcomingByUserId" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE user_id = #{userId}
+          AND start_time &gt;= NOW()
+          AND status IN ('pending', 'active')
+        ORDER BY start_time ASC
+    </select>
+
+    <!-- 查询用户今天的预约 -->
+    <select id="selectTodayByUserId" resultMap="BaseResultMap">
+        SELECT * FROM reservations
+        WHERE user_id = #{userId}
+          AND DATE(start_time) = CURDATE()
+        ORDER BY start_time ASC
+    </select>
+
+    <!-- 根据预约编号查询预约 -->
+    <select id="selectByReservationNo" resultMap="BaseResultMap">
+        SELECT * FROM reservations WHERE reservation_no = #{reservationNo}
+    </select>
+
+</mapper>

@@ -11,7 +11,7 @@ public class StudyRoomApplication {
         SpringApplication.run(StudyRoomApplication.class, args);
         System.out.println("========================================");
         System.out.println("自习室预约系统启动成功！");
-        System.out.println("接口文档地址: http://localhost:8080/api/doc.htm");
+        System.out.println("接口文档地址: http://localhost:8080/api/doc.html");
         System.out.println("========================================");
     }
 }

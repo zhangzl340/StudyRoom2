@@ -36,10 +36,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!user.getStatus().equals("active")) {
             throw new UnauthorizedException("账号已被禁用");
         }
-
+        log.error("密码：" + user.getPassword());
         String encryptedPassword = DigestUtils.md5DigestAsHex(password.getBytes());
+        log.error("加密后的密码为：" + encryptedPassword);
         if (!user.getPassword().equals(encryptedPassword)) {
-            throw new UnauthorizedException("用户名或密码错误");
+            throw new UnauthorizedException("密码错误");
         }
 
         Map<String, Object> claims = new HashMap<>();
