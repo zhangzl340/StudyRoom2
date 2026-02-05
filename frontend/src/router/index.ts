@@ -4,7 +4,19 @@ import type { RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/login'
+    redirect: (to)=>{
+      // 根据登录状态和角色动态重定向
+      const token = localStorage.getItem('token')
+      const role = localStorage.getItem('role')
+      
+      if (!token) {
+        return '/login'
+      } else if (role === 'admin') {
+        return '/admin/dashboard'
+      } else {
+        return '/student/dashboard'
+      }
+    }
   },
   {
     path: '/login',
@@ -148,6 +160,17 @@ router.beforeEach((to, _from, next) => {
   // 设置页面标题
   document.title = to.meta.title as string || '高校智能自习室系统'
 
+  const token = localStorage.getItem('token')
+  const userRole = localStorage.getItem('role')
+
+  if ((to.path === '/login' || to.path === '/register') && token) {
+    if (userRole === 'admin') {
+      return next({ path: '/admin/dashboard' })
+    } else {
+      return next({ path: '/student/dashboard' })
+    }
+  }
+
   // 检查是否需要认证
   if (to.meta.requiresAuth) {
     const token = localStorage.getItem('token')
@@ -156,12 +179,16 @@ router.beforeEach((to, _from, next) => {
       next({ path: '/login' })
     } else {
       // 检查角色权限
-      const userRole = localStorage.getItem('role')
-      if (to.meta.role && to.meta.role !== userRole) {
-        // 角色不匹配，重定向到学生首页
-        next({ path: '/student/dashboard' })
+      const requiredRole = to.meta.role
+      if (requiredRole && requiredRole !== userRole) {
+      // 角色不匹配，根据实际角色重定向
+        if (userRole === 'admin') {
+          return next({ path: '/admin/dashboard' })
+        } else {
+          return next({ path: '/student/dashboard' })
+        }
       } else {
-        next()
+        return next()
       }
     }
   } else {

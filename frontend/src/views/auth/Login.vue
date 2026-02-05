@@ -33,7 +33,9 @@ const handleLogin = async () => {
       if (valid) {
         loading.value = true
         try {
-          await authStore.login(loginForm.value.username, loginForm.value.password)
+          const res = await authStore.login(loginForm.value.username, loginForm.value.password)
+          console.log("res = " + res.code)
+          console.log("token = " + localStorage.getItem('role'))
           ElMessage.success('登录成功')
           router.replace('/student/dashboard')
         } catch (error) {

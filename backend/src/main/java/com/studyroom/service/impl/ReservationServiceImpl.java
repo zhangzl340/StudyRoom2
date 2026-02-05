@@ -24,12 +24,9 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
     @Override
     public Result<?> createReservation(Reservation reservation) {
-        // 生成预约编号
-        String reservationNo = "RES" + new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()) + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        reservation.setReservationNo(reservationNo);
 
         // 检查预约冲突
-        Result<?> conflictResult = checkReservationConflict(reservation.getRoomId(), reservation.getSeatId(), reservation.getStartTime().toString(), reservation.getEndTime().toString());
+        Result<?> conflictResult = checkReservationConflict(reservation.getSeatId(), reservation.getReservationInTime().toString(), reservation.getReservationOutTime().toString());
         if (!conflictResult.isSuccess()) {
             return conflictResult;
         }
@@ -98,13 +95,13 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
     }
 
     @Override
-    public Result<?> checkReservationConflict(Long roomId, Long seatId, String startTime, String endTime) {
+    public Result<?> checkReservationConflict(Long seatId, String startTime, String endTime) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             Date start = sdf.parse(startTime);
             Date end = sdf.parse(endTime);
 
-            List<Reservation> conflicts = reservationMapper.selectByTimeRange(roomId, seatId, start, end);
+            List<Reservation> conflicts = reservationMapper.selectByTimeRange(seatId, start, end);
             if (!conflicts.isEmpty()) {
                 return Result.error("该时间段座位已被预约");
             }
@@ -122,7 +119,7 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         }
 
         // 计算预约时长（小时）
-        long duration = (reservation.getEndTime().getTime() - reservation.getStartTime().getTime()) / (1000 * 60 * 60);
+        long duration = (reservation.getReservationOutTime().getTime() - reservation.getReservationInTime().getTime()) / (1000 * 60 * 60);
         // 假设每小时1元
         double fee = duration * 1.0;
 
@@ -140,8 +137,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
     }
 
     @Override
-    public Result<?> checkAvailability(Long roomId, Long seatId, String startTime, String endTime) {
-        return checkReservationConflict(roomId, seatId, startTime, endTime);
+    public Result<?> checkAvailability(Long seatId, String startTime, String endTime) {
+        return checkReservationConflict(seatId, startTime, endTime);
     }
 
     @Override

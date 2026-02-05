@@ -18,7 +18,7 @@ public interface ReservationService extends IService<Reservation> {
 
     Result<?> updateReservation(Long id, Reservation reservation);
 
-    Result<?> checkReservationConflict(Long roomId, Long seatId, String startTime, String endTime);
+    Result<?> checkReservationConflict(Long seatId, String startTime, String endTime);
 
     Result<?> calculateReservationFee(Long id);
 
@@ -26,7 +26,7 @@ public interface ReservationService extends IService<Reservation> {
 
     Result<?> getTodayReservations(Long userId);
 
-    Result<?> checkAvailability(Long roomId, Long seatId, String startTime, String endTime);
+    Result<?> checkAvailability(Long seatId, String startTime, String endTime);
 
     Result<?> getReservationStatistics();
 

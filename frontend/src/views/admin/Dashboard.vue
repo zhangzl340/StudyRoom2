@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { useRoomStore } from '../../stores/room'
 import { useReservationStore } from '../../stores/reservation'
 import { useAuthStore } from '../../stores/auth'
+import router from '@/router'
 
 const roomStore = useRoomStore()
 const reservationStore = useReservationStore()
@@ -17,6 +18,11 @@ const stats = ref({
   userCount: 0,
   violationCount: 0
 })
+
+// 快捷导航方法
+const navigateTo = (path) =>{
+  router.push(path)
+}
 
 // 加载状态
 const loading = ref(true)
@@ -161,25 +167,25 @@ onMounted(() => {
           <span>快捷操作</span>
         </template>
         <div class="quick-actions">
-          <el-button type="primary" @click="window.location.href = '/admin/rooms'">
+          <el-button type="primary" @click="navigateTo('/admin/rooms')">
             <el-icon>
               <Building />
             </el-icon>
             <span>自习室管理</span>
           </el-button>
-          <el-button type="success" @click="window.location.href = '/admin/seats'">
+          <el-button type="success" @click="navigateTo('/admin/seats')">
             <el-icon>
               <Suitcase />
             </el-icon>
             <span>座位管理</span>
           </el-button>
-          <el-button type="warning" @click="window.location.href = '/admin/reservations'">
+          <el-button type="warning" @click="navigateTo('/admin/reservations')">
             <el-icon>
               <Calendar />
             </el-icon>
             <span>预约管理</span>
           </el-button>
-          <el-button type="danger" @click="window.location.href = '/admin/users'">
+          <el-button type="danger" @click="navigateTo('/admin/users')">
             <el-icon>
               <User />
             </el-icon>

@@ -24,18 +24,4 @@ public interface RoomService extends IService<Room> {
     Result<?> updateRoomStatus(Long id, String status);
 
     Result<?> getRoomStatus(Long id);
-
-    Result<?> createSeats(Long roomId, List<Seat> seats);
-
-    Result<?> updateSeatStatus(Long id, String status);
-
-    Result<?> getSeatsByRoomId(Long roomId);
-
-    Result<?> getAvailableSeatsByRoomId(Long roomId);
-
-    Result<?> updateSeatLayout(Long roomId, List<Seat> seats);
-
-    Result<?> importSeats(Long roomId, List<Seat> seats);
-
-    Result<?> checkSeatAvailability(Long roomId, Long seatId, String startTime, String endTime);
 }

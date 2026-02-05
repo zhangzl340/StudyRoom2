@@ -48,6 +48,15 @@ jwt:
   expire: 3600000
   refresh-expire: 7200000
 
+# 文件上传配置
+file:
+  upload:
+    # 图片上传路径
+    image:
+      path: F:/自习室项目第二版/backend/upload/images/
+      # 图片访问路径
+      url: /upload/images/
+
 logging:
   level:
     com.studyroom: debug
@@ -88,3 +97,4 @@ knife4j:
       name: 开发团队
       email: dev@example.com
       url: https://example.com
+

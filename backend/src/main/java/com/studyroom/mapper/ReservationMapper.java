@@ -10,17 +10,15 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
 
     List<Reservation> selectByUserId(Long userId);
 
-    List<Reservation> selectByRoomId(Long roomId);
-
     List<Reservation> selectBySeatId(Long seatId);
 
     List<Reservation> selectByStatus(String status);
 
-    List<Reservation> selectByTimeRange(Long roomId, Long seatId, Date startTime, Date endTime);
+    List<Reservation> selectByReservationStatus(String reservationStatus);
+
+    List<Reservation> selectByTimeRange(Long seatId, Date reservationInTime, Date reservationOutTime);
 
     List<Reservation> selectUpcomingByUserId(Long userId);
 
     List<Reservation> selectTodayByUserId(Long userId);
-
-    Reservation selectByReservationNo(String reservationNo);
 }

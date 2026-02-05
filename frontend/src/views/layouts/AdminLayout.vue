@@ -1,13 +1,29 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { 
+  House, 
+  OfficeBuilding, 
+  Suitcase, 
+  Calendar, 
+  User, 
+  ArrowDown, 
+  ArrowRight, 
+  ArrowLeft,
+  SwitchButton,
+  Expand,
+  Fold
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 // 侧边栏折叠状态
 const sidebarCollapsed = ref(false)
+// 移动端侧边栏显示状态
+const mobileSidebarVisible = ref(false)
 
 // 计算当前激活的菜单项
 const activeMenu = computed(() => {
@@ -23,31 +39,31 @@ const sidebarItems = [
   {
     name: 'dashboard',
     label: '仪表盘',
-    icon: 'House',
+    icon: House,
     path: '/admin/dashboard'
   },
   {
     name: 'room',
     label: '自习室管理',
-    icon: 'Building',
+    icon: OfficeBuilding,
     path: '/admin/rooms'
   },
   {
     name: 'seat',
     label: '座位管理',
-    icon: 'Suitcase',
+    icon: Suitcase,
     path: '/admin/seats'
   },
   {
     name: 'reservation',
     label: '预约管理',
-    icon: 'Calendar',
+    icon: Calendar,
     path: '/admin/reservations'
   },
   {
     name: 'user',
     label: '用户管理',
-    icon: 'User',
+    icon: User,
     path: '/admin/users'
   }
 ]
@@ -57,31 +73,85 @@ const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
 }
 
-// 退出登录
-const logout = () => {
-  authStore.logout()
-  window.location.href = '/login'
+// 处理移动端侧边栏
+const toggleMobileSidebar = () => {
+  mobileSidebarVisible.value = !mobileSidebarVisible.value
 }
+
+// 退出登录
+const logout = async () => {
+  try {
+    await authStore.logout()
+    router.push('/login')
+  } catch (error) {
+    console.error('退出登录失败:', error)
+  }
+}
+
+// 处理菜单点击
+const handleMenuClick = (path) => {
+  router.push(path)
+  // 如果是移动端，点击后关闭侧边栏
+  if (isMobile.value) {
+    mobileSidebarVisible.value = false
+  }
+}
+
+// 响应式处理
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+// 监听窗口大小变化
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 </script>
 
 <template>
   <div class="admin-layout">
+    <!-- 移动端遮罩层 -->
+    <div 
+      v-if="isMobile && mobileSidebarVisible" 
+      class="mobile-mask"
+      @click="mobileSidebarVisible = false"
+    ></div>
+
     <!-- 侧边栏 -->
-    <div class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+    <div 
+      class="sidebar" 
+      :class="{ 
+        collapsed: sidebarCollapsed && !isMobile,
+        'mobile-visible': mobileSidebarVisible && isMobile
+      }"
+    >
       <div class="sidebar-header">
-        <h3 class="logo">管理后台</h3>
+        <h3 class="logo" v-if="!sidebarCollapsed || isMobile">管理后台</h3>
+        <h3 class="logo" v-else>管</h3>
       </div>
       <el-menu
         :default-active="activeMenu"
-        :collapse="sidebarCollapsed"
+        :collapse="sidebarCollapsed && !isMobile"
         :background-color="'#001529'"
         :text-color="'#bfcbd9'"
         :unique-opened="true"
         :active-text-color="'#409EFF'"
         :collapse-transition="false"
         mode="vertical"
+        router
       >
-        <el-menu-item v-for="item in sidebarItems" :key="item.path" :index="item.path">
+        <el-menu-item 
+          v-for="item in sidebarItems" 
+          :key="item.path" 
+          :index="item.path"
+          @click="handleMenuClick(item.path)"
+        >
           <el-icon>
             <component :is="item.icon" />
           </el-icon>
@@ -91,11 +161,16 @@ const logout = () => {
     </div>
 
     <!-- 主内容区 -->
-    <div class="main-content" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <div class="main-content">
       <!-- 顶部导航栏 -->
       <div class="navbar">
         <div class="navbar-left">
-          <el-button :icon="sidebarCollapsed ? 'ArrowRight' : 'ArrowLeft'" @click="toggleSidebar" circle>
+          <el-button 
+            :icon="isMobile ? (mobileSidebarVisible ? Fold : Expand) : (sidebarCollapsed ? ArrowRight : ArrowLeft)" 
+            @click="isMobile ? toggleMobileSidebar() : toggleSidebar()" 
+            circle
+            size="small"
+          >
           </el-button>
           <h2 class="page-title">{{ route.meta.title || '管理后台' }}</h2>
         </div>
@@ -110,7 +185,13 @@ const logout = () => {
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item @click="logout">
+                <el-dropdown-item @click="router.push('/admin/profile')">
+                  <el-icon>
+                    <User />
+                  </el-icon>
+                  <span>个人中心</span>
+                </el-dropdown-item>
+                <el-dropdown-item divided @click="logout">
                   <el-icon>
                     <SwitchButton />
                   </el-icon>
@@ -135,17 +216,34 @@ const logout = () => {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+
+  .mobile-mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
+  }
 
   .sidebar {
     width: 200px;
     height: 100%;
     background-color: #001529;
     color: #bfcbd9;
-    transition: width 0.3s;
+    transition: width 0.3s, transform 0.3s;
     overflow: hidden;
+    z-index: 1000;
 
     &.collapsed {
       width: 64px;
+    }
+
+    &.mobile-visible {
+      transform: translateX(0);
     }
 
     .sidebar-header {
@@ -160,16 +258,21 @@ const logout = () => {
         font-size: 18px;
         font-weight: bold;
         color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
       }
     }
 
     .el-menu {
       border-right: none;
+      height: calc(100% - 60px);
+      overflow-y: auto;
 
       .el-menu-item {
-        height: 60px;
-        line-height: 60px;
+        height: 56px;
+        line-height: 56px;
         margin: 0;
+        border-radius: 0;
 
         &:hover {
           background-color: rgba(255, 255, 255, 0.08);
@@ -177,6 +280,10 @@ const logout = () => {
 
         &.is-active {
           background-color: rgba(64, 158, 255, 0.2);
+        }
+
+        .el-icon {
+          font-size: 18px;
         }
       }
     }
@@ -187,11 +294,7 @@ const logout = () => {
     height: 100%;
     display: flex;
     flex-direction: column;
-    transition: margin-left 0.3s;
-
-    &.sidebar-collapsed {
-      margin-left: 64px;
-    }
+    overflow: hidden;
 
     .navbar {
       height: 60px;
@@ -201,16 +304,19 @@ const logout = () => {
       align-items: center;
       justify-content: space-between;
       padding: 0 20px;
+      box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+      z-index: 100;
 
       .navbar-left {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 16px;
 
         .page-title {
           font-size: 18px;
-          font-weight: bold;
+          font-weight: 600;
           color: #303133;
+          margin: 0;
         }
       }
 
@@ -225,6 +331,7 @@ const logout = () => {
           cursor: pointer;
           padding: 8px 12px;
           border-radius: 4px;
+          transition: background-color 0.3s;
 
           &:hover {
             background-color: #f5f7fa;
@@ -233,6 +340,7 @@ const logout = () => {
           .username {
             font-size: 14px;
             color: #303133;
+            font-weight: 500;
           }
         }
       }
@@ -249,25 +357,65 @@ const logout = () => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .mobile-mask {
+    display: block !important;
+  }
+
   .sidebar {
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 1000;
     height: 100vh;
     box-shadow: 2px 0 6px rgba(0, 21, 41, 0.35);
+    transform: translateX(-100%);
 
     &.collapsed {
-      transform: translateX(-100%);
+      width: 200px;
+    }
+
+    &.mobile-visible {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      justify-content: flex-start;
+      padding-left: 24px;
     }
   }
 
   .main-content {
-    margin-left: 0 !important;
-  }
+    width: 100%;
 
-  .content {
-    padding: 10px !important;
+    .content {
+      padding: 16px !important;
+    }
   }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+
+  &:hover {
+    background: #a8a8a8;
+  }
+}
+
+.sidebar .el-menu::-webkit-scrollbar-track {
+  background: #002140;
+}
+
+.sidebar .el-menu::-webkit-scrollbar-thumb {
+  background: #4a4a4a;
 }
 </style>

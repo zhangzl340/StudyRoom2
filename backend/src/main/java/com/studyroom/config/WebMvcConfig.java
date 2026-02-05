@@ -1,17 +1,31 @@
 package com.studyroom.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    @Value("${file.upload.image.path}")
+    private String imageUploadPath;
+
+    @Value("${file.upload.image.url}")
+    private String imageUploadUrl;
+
+    private final RequestLoggingInterceptor requestLoggingInterceptor;
+
+    public WebMvcConfig(RequestLoggingInterceptor requestLoggingInterceptor) {
+        this.requestLoggingInterceptor = requestLoggingInterceptor;
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // 注册请求日志拦截器
-        registry.addInterceptor(new RequestLoggingInterceptor())
+        registry.addInterceptor(requestLoggingInterceptor)
                 // 拦截所有请求
                 .addPathPatterns("/**")
                 // 排除静态资源和Swagger/Knife4j相关路径
@@ -21,9 +35,19 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/webjars/**",
-                        "/swagger-resources/**"
+                        "/swagger-resources/**",
+                        "/upload/**",
+                        "/error"
                 );
     }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 映射上传的图片资源
+        registry.addResourceHandler(imageUploadUrl + "**")
+                .addResourceLocations("file:" + imageUploadPath);
+    }
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
@@ -38,5 +62,4 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .allowCredentials(true)
                 .maxAge(3600);
     }
-
 }

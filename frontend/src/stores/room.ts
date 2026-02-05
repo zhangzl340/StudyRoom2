@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getRoomList, getRoomDetail, getAvailableRooms, getSeatsByRoomId, getAvailableSeatsByRoomId } from '../services/room'
+import { getRoomList, getRoomDetail, getAvailableRooms, getSeatsByRoomId, getAvailableSeatsByRoomId, createRoom, updateRoom, deleteRoom ,uploadImage} from '../services/room'
 
 // 定义后端返回数据类型
 interface ApiResponse {
   code: number
   message: string
   data: any
+  success?: boolean
 }
 
 export const useRoomStore = defineStore('room', () => {
@@ -108,6 +109,86 @@ export const useRoomStore = defineStore('room', () => {
     }
   }
 
+  async function getRooms(keyword?: string) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await fetchRooms({ keyword })
+      return response
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createRoomAction(roomData: any) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await createRoom(roomData) as unknown as ApiResponse
+      if (response.code === 200) {
+        // 重新获取自习室列表
+        await fetchRooms()
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || '创建自习室失败'
+      return { code: 500, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateRoomAction(roomData: any) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await updateRoom(roomData.id, roomData) as unknown as ApiResponse
+      if (response.code === 200) {
+        // 重新获取自习室列表
+        await fetchRooms()
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || '更新自习室失败'
+      return { code: 500, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function deleteRoomAction(roomId: number) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await deleteRoom(roomId) as unknown as ApiResponse
+      if (response.code === 200) {
+        // 重新获取自习室列表
+        await fetchRooms()
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || '删除自习室失败'
+      return { code: 500, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+  async function uploadImageAction(file:File){
+    loading.value = true
+    error.value = null
+    try {
+      const response = await uploadImage(file) as unknown as ApiResponse
+      if (response.code === 200) {
+        console.log("图片上传成功")
+        // 获取自习室列表
+        await fetchRooms()
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || '上传图片失败'
+    }
+  }
+
   return {
     rooms,
     currentRoom,
@@ -119,6 +200,11 @@ export const useRoomStore = defineStore('room', () => {
     fetchRoomDetail,
     fetchSeats,
     fetchAvailableSeats,
-    fetchAvailableRoomsList
+    fetchAvailableRoomsList,
+    getRooms,
+    createRoom: createRoomAction,
+    updateRoom: updateRoomAction,
+    deleteRoom: deleteRoomAction,
+    uploadImage: uploadImageAction
   }
 })

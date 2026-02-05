@@ -184,7 +184,7 @@ public class SqlController {
         reservation.setCreatedAt(new Date());
         reservation.setUpdatedAt(new Date());
         reservation.setStatus("active");
-        reservation.setReservationNo("RES" + System.currentTimeMillis());
+//        reservation.setReservationNo("RES" + System.currentTimeMillis());
         int result = reservationMapper.insert(reservation);
         return Result.success(result > 0 ? reservation : null);
     }

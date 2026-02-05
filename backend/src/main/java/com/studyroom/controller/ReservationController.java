@@ -72,8 +72,8 @@ public class ReservationController {
 
     @Operation(summary = "检查预约冲突")
     @GetMapping("/availability")
-    public Result<?> checkAvailability(@RequestParam Long roomId, @RequestParam Long seatId, @RequestParam String startTime, @RequestParam String endTime) {
-        return reservationService.checkAvailability(roomId, seatId, startTime, endTime);
+    public Result<?> checkAvailability(@RequestParam Long seatId, @RequestParam String startTime, @RequestParam String endTime) {
+        return reservationService.checkAvailability(seatId, startTime, endTime);
     }
 
     @Operation(summary = "获取今日预约统计")

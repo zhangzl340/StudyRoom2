@@ -1,8 +1,7 @@
 package com.studyroom.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -17,17 +16,19 @@ public class Seat implements Serializable {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private String seatNum;
+
     private Long roomId;
 
-    private String seatNumber;
+    private Integer rowNum;
 
-    private String type;
+    private Integer colNum;
 
     private String status;
 
-    private String position;
-
+    @TableField(fill = FieldFill.INSERT)
     private Date createdAt;
 
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private Date updatedAt;
 }

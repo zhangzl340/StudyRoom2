@@ -1,15 +1,16 @@
 package com.studyroom.controller;
 
 import com.studyroom.entity.Room;
-import com.studyroom.entity.Seat;
 import com.studyroom.service.RoomService;
+import com.studyroom.utils.FileUploadUtil;
 import com.studyroom.utils.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.IOException;
 
 @Tag(name = "自习室模块",description ="处理自习室模块增删改查")
 @RestController
@@ -18,6 +19,9 @@ public class RoomController {
 
     @Autowired
     private RoomService roomService;
+
+    @Autowired
+    private FileUploadUtil fileUploadUtil;
 
     @Operation(summary = "获取自习室列表")
     @GetMapping("/list")
@@ -31,18 +35,6 @@ public class RoomController {
         return roomService.getRoomDetail(id);
     }
 
-    @Operation(summary = "获取自习室座位列表")
-    @GetMapping("/{id}/seats")
-    public Result<?> getSeatsByRoomId(@PathVariable Long id) {
-        return roomService.getSeatsByRoomId(id);
-    }
-
-    @Operation(summary = "获取自习室可用座位")
-    @GetMapping("/{id}/available-seats")
-    public Result<?> getAvailableSeatsByRoomId(@PathVariable Long id) {
-        return roomService.getAvailableSeatsByRoomId(id);
-    }
-
     @Operation(summary = "获取自习室实时状态")
     @GetMapping("/status/{id}")
     public Result<?> getRoomStatus(@PathVariable Long id) {
@@ -53,6 +45,22 @@ public class RoomController {
     @GetMapping("/available")
     public Result<?> getAvailableRooms() {
         return roomService.getAvailableRooms();
+    }
+
+    @Operation(summary = "上传图片")
+    @PostMapping("/upload/image")
+    public Result<?> uploadImage(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = fileUploadUtil.uploadImage(file);
+            if (imageUrl != null) {
+                return Result.success("上传成功", imageUrl);
+            } else {
+                return Result.error("上传失败");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Result.error("上传失败：" + e.getMessage());
+        }
     }
 
     @Operation(summary = "创建自习室")
@@ -77,35 +85,5 @@ public class RoomController {
     @PutMapping("/status/{id}")
     public Result<?> updateRoomStatus(@PathVariable Long id, @RequestParam String status) {
         return roomService.updateRoomStatus(id, status);
-    }
-
-    @Operation(summary = "创建座位")
-    @PostMapping("/seats/create")
-    public Result<?> createSeats(@RequestParam Long roomId, @RequestBody List<Seat> seats) {
-        return roomService.createSeats(roomId, seats);
-    }
-
-    @Operation(summary = "更新座位状态")
-    @PutMapping("/seat/status/{id}")
-    public Result<?> updateSeatStatus(@PathVariable Long id, @RequestParam String status) {
-        return roomService.updateSeatStatus(id, status);
-    }
-
-    @Operation(summary = "更新自习室布局")
-    @PutMapping("/seat/layout")
-    public Result<?> updateSeatLayout(@RequestParam Long roomId, @RequestBody List<Seat> seats) {
-        return roomService.updateSeatLayout(roomId, seats);
-    }
-
-    @Operation(summary = "批量导入座位")
-    @PostMapping("/seat/import")
-    public Result<?> importSeats(@RequestParam Long roomId, @RequestBody List<Seat> seats) {
-        return roomService.importSeats(roomId, seats);
-    }
-
-    @Operation(summary = "检查座位可用性")
-    @GetMapping("/seat/availability")
-    public Result<?> checkSeatAvailability(@RequestParam Long roomId, @RequestParam Long seatId, @RequestParam String startTime, @RequestParam String endTime) {
-        return roomService.checkSeatAvailability(roomId, seatId, startTime, endTime);
     }
 }

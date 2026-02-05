@@ -11,9 +11,7 @@ public interface SeatMapper extends BaseMapper<Seat> {
 
     List<Seat> selectAvailableSeatsByRoomId(Long roomId);
 
-    Seat selectByRoomIdAndSeatNumber(Long roomId, String seatNumber);
+    Seat selectByRoomIdAndSeatNum(Long roomId, String seatNum);
 
     List<Seat> selectByStatus(String status);
-
-    List<Seat> selectByType(String type);
 }

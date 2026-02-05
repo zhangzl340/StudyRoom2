@@ -6,14 +6,13 @@
     <resultMap id="BaseResultMap" type="com.studyroom.entity.Room">
         <id property="id" column="id" />
         <result property="name" column="name" />
-        <result property="code" column="code" />
-        <result property="building" column="building" />
-        <result property="floor" column="floor" />
-        <result property="capacity" column="capacity" />
-        <result property="status" column="status" />
+        <result property="image" column="image" />
+        <result property="location" column="location" />
+        <result property="rowsCount" column="rows_count" />
+        <result property="colsCount" column="cols_count" />
         <result property="openTime" column="open_time" />
         <result property="closeTime" column="close_time" />
-        <result property="description" column="description" />
+        <result property="status" column="status" />
         <result property="createdAt" column="created_at" />
         <result property="updatedAt" column="updated_at" />
     </resultMap>
@@ -21,24 +20,14 @@
     <!-- 查询可用自习室 -->
     <select id="selectAvailableRooms" resultMap="BaseResultMap">
         SELECT * FROM rooms
-        WHERE status = 'open'
+        WHERE status = 'available'
           AND CURRENT_TIME BETWEEN open_time AND close_time
-        ORDER BY building, floor, name
+        ORDER BY location, name
     </select>
 
-    <!-- 根据编码查询自习室 -->
-    <select id="selectByCode" resultMap="BaseResultMap">
-        SELECT * FROM rooms WHERE code = #{code}
-    </select>
-
-    <!-- 根据楼栋查询自习室 -->
-    <select id="selectByBuilding" resultMap="BaseResultMap">
-        SELECT * FROM rooms WHERE building = #{building} ORDER BY floor, name
-    </select>
-
-    <!-- 根据楼层查询自习室 -->
-    <select id="selectByFloor" resultMap="BaseResultMap">
-        SELECT * FROM rooms WHERE floor = #{floor} ORDER BY building, name
+    <!-- 根据位置查询自习室 -->
+    <select id="selectByLocation" resultMap="BaseResultMap">
+        SELECT * FROM rooms WHERE location = #{location} ORDER BY name
     </select>
 
 </mapper>

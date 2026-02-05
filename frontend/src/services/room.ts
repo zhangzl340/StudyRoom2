@@ -146,3 +146,17 @@ export async function checkSeatAvailability(roomId: number, seatId: number, star
     }
   })
 }
+
+// 上传图片
+export async function uploadImage(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return service({
+    url: '/room/upload/image',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}

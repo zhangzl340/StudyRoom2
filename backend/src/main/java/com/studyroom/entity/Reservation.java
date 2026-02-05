@@ -1,8 +1,7 @@
 package com.studyroom.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -19,19 +18,25 @@ public class Reservation implements Serializable {
 
     private Long userId;
 
-    private Long roomId;
-
     private Long seatId;
-
-    private Date startTime;
-
-    private Date endTime;
 
     private String status;
 
-    private String reservationNo;
+    private String reservationStatus;
 
+    private Date reservationInTime;
+
+    private Date reservationOutTime;
+
+    private Date signInTime;
+
+    private Date signOutTime;
+
+    private String remark;
+
+    @TableField(fill = FieldFill.INSERT)
     private Date createdAt;
 
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private Date updatedAt;
 }
