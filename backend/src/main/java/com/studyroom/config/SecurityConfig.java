@@ -39,6 +39,7 @@ public class SecurityConfig {
                     // 运行访问用户接口
                 .requestMatchers("/user/**").permitAll()
                 .requestMatchers("/room/**").permitAll()
+                .requestMatchers("/seat/**").permitAll()
                     // 运行访问静态资源
                 .requestMatchers("/upload/**","/static/**","/images/**").permitAll()
                 // 其他请求需要认证

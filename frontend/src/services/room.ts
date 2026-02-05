@@ -20,7 +20,7 @@ export async function getRoomDetail(roomId: number) {
 // 获取自习室座位列表
 export async function getSeatsByRoomId(roomId: number) {
   return service({
-    url: `/room/${roomId}/seats`,
+    url: `/seat/room/${roomId}`,
     method: 'get'
   })
 }
@@ -28,7 +28,7 @@ export async function getSeatsByRoomId(roomId: number) {
 // 获取自习室可用座位
 export async function getAvailableSeatsByRoomId(roomId: number) {
   return service({
-    url: `/room/${roomId}/available-seats`,
+    url: `/seat/room/${roomId}/available`,
     method: 'get'
   })
 }
@@ -89,7 +89,7 @@ export async function updateRoomStatus(roomId: number, status: string) {
 // 创建座位
 export async function createSeats(roomId: number, seats: any[]) {
   return service({
-    url: '/room/seats/create',
+    url: '/seat/create',
     method: 'post',
     params: {
       roomId
@@ -101,7 +101,7 @@ export async function createSeats(roomId: number, seats: any[]) {
 // 更新座位状态
 export async function updateSeatStatus(seatId: number, status: string) {
   return service({
-    url: `/room/seat/status/${seatId}`,
+    url: `/seat/status/${seatId}`,
     method: 'put',
     params: {
       status
@@ -112,7 +112,7 @@ export async function updateSeatStatus(seatId: number, status: string) {
 // 更新座位布局
 export async function updateSeatLayout(roomId: number, seats: any[]) {
   return service({
-    url: '/room/seat/layout',
+    url: '/seat/layout',
     method: 'put',
     params: {
       roomId
@@ -124,7 +124,7 @@ export async function updateSeatLayout(roomId: number, seats: any[]) {
 // 批量导入座位
 export async function importSeats(roomId: number, seats: any[]) {
   return service({
-    url: '/room/seat/import',
+    url: '/seat/import',
     method: 'post',
     params: {
       roomId
@@ -134,12 +134,11 @@ export async function importSeats(roomId: number, seats: any[]) {
 }
 
 // 检查座位可用性
-export async function checkSeatAvailability(roomId: number, seatId: number, startTime: string, endTime: string) {
+export async function checkSeatAvailability(seatId: number, startTime: string, endTime: string) {
   return service({
-    url: '/room/seat/availability',
+    url: '/seat/availability',
     method: 'get',
     params: {
-      roomId,
       seatId,
       startTime,
       endTime

@@ -6,6 +6,7 @@ import com.studyroom.utils.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "用户模块",description = "处理用户CRUD")
@@ -32,6 +33,8 @@ public class UserController {
     @Operation(summary = "创建用户")
     @PostMapping("/create")
     public Result<?> createUser(@RequestBody User user) {
+        String encryptedPassword = DigestUtils.md5DigestAsHex(user.getPassword().getBytes());
+        user.setPassword(encryptedPassword);
         if (userService.save(user)) {
             return Result.success("用户创建成功");
         } else {

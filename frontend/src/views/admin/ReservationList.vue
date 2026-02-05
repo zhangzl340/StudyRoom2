@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Delete, Refresh, Download } from '@element-plus/icons-vue'
 import { useReservationStore } from '../../stores/reservation'
 import { useRoomStore } from '../../stores/room'
+import * as reservationService from '../../services/reservation'
 
 const reservationStore = useReservationStore()
 const roomStore = useRoomStore()
@@ -92,27 +93,29 @@ const getRooms = async () => {
 const getReservations = async () => {
   loading.value = true
   try {
-    await reservationStore.getReservations()
+    // 构造后端API参数
+    const params = {
+      userId: queryParams.value.userName ? parseInt(queryParams.value.userName) || undefined : undefined,
+      status: queryParams.value.status,
+      page: queryParams.value.pageNum,
+      size: queryParams.value.pageSize
+    }
+    
+    await reservationStore.fetchReservations(params)
     let filteredReservations = reservationStore.reservations
     
-    // 筛选条件
+    // 前端额外筛选
     if (queryParams.value.userName) {
       filteredReservations = filteredReservations.filter(item => 
         item.userName?.includes(queryParams.value.userName) || 
         item.userId?.toString().includes(queryParams.value.userName)
       )
     }
-    if (queryParams.value.status) {
-      filteredReservations = filteredReservations.filter(item => item.status === queryParams.value.status)
-    }
     if (queryParams.value.reservationStatus) {
       filteredReservations = filteredReservations.filter(item => item.reservationStatus === queryParams.value.reservationStatus)
     }
     
-    // 分页处理
-    const start = (queryParams.value.pageNum - 1) * queryParams.value.pageSize
-    const end = start + queryParams.value.pageSize
-    reservationList.value = filteredReservations.slice(start, end)
+    reservationList.value = filteredReservations
     pagination.value.total = filteredReservations.length
   } catch (error) {
     ElMessage.error('获取预约列表失败')
@@ -181,7 +184,8 @@ const submitForm = async () => {
     formRef.value.validate(async (valid) => {
       if (valid) {
         try {
-          // 这里可以调用后端API更新预约
+          // 调用后端API更新预约
+          await reservationService.updateReservation(form.value.id, form.value)
           ElMessage.success('编辑成功')
           dialogVisible.value = false
           getReservations()
@@ -202,7 +206,12 @@ const handleDelete = (reservation) => {
     type: 'warning'
   }).then(async () => {
     try {
-      // 这里可以调用后端API删除预约
+      // 逐个删除预约（后端暂不支持批量删除）
+      for (const id of ids) {
+        // 这里可以调用后端API删除预约
+        // 由于后端没有提供删除API，我们可以通过更新预约状态为取消来实现
+        await reservationService.updateReservation(id, { status: 'cancelled', reservationStatus: '取消预约' })
+      }
       ElMessage.success('删除成功')
       getReservations()
     } catch (error) {
@@ -214,9 +223,36 @@ const handleDelete = (reservation) => {
 }
 
 // 导出预约
-const handleExport = () => {
-  // 这里可以调用后端API导出预约
-  ElMessage.success('导出成功')
+const handleExport = async () => {
+  try {
+    // 调用后端API导出预约
+    // 由于后端没有提供导出API，这里暂时模拟导出功能
+    // 实际项目中，应该调用后端的导出API，然后下载文件
+    const response = await fetch('/api/reservation/export', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    
+    if (response.ok) {
+      // 处理文件下载
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `reservation_${new Date().getTime()}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      ElMessage.success('导出成功')
+    } else {
+      ElMessage.error('导出失败')
+    }
+  } catch (error) {
+    ElMessage.error('导出失败')
+  }
 }
 
 // 刷新列表

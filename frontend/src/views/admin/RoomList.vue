@@ -476,8 +476,9 @@ onMounted(() => {
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="scope">
-            <el-tag v-if="scope.row.status === 'available' || scope.row.status === 'open'" type="success">可用</el-tag>
-            <el-tag v-else type="danger">不可用</el-tag>
+            <el-tag v-if="scope.row.status === 'open'" type="success">可用</el-tag>
+            <el-tag v-else-if="scope.row.status === 'closed'" type="danger">不可用</el-tag>
+            <el-tag v-else type="warning">维护中</el-tag>
           </template>
         </el-table-column>
           <el-table-column label="图片" width="100" align="center">
@@ -588,8 +589,8 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="选择状态">
-            <el-option label="可用" value="available" />
-            <el-option label="不可用" value="unavailable" />
+            <el-option label="可用" value="open" />
+            <el-option label="不可用" value="closed" />
             <el-option label="维护中" value="maintenance" />
           </el-select>
         </el-form-item>
