@@ -43,7 +43,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 映射上传的图片资源
+        // 映射上传的图片资源（考虑context-path）
+        registry.addResourceHandler("/api" + imageUploadUrl + "**")
+                .addResourceLocations("file:" + imageUploadPath);
+        // 同时添加不带/api的映射，确保兼容性
         registry.addResourceHandler(imageUploadUrl + "**")
                 .addResourceLocations("file:" + imageUploadPath);
     }

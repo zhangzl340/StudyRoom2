@@ -223,10 +223,9 @@ const getFullImageUrl = (imagePath) => {
   
   // 如果是以 / 开头，表示是绝对路径
   if (imagePath.startsWith('/')) {
-    // 根据您的后端地址拼接完整URL
-    // 您需要根据实际情况调整 baseURL
+    // 根据您的后端地址拼接完整URL，包含/api前缀
     const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
-    const fullUrl = `${baseURL}${imagePath}`
+    const fullUrl = `${baseURL}/api${imagePath}`
     console.log('拼接后的完整URL:', fullUrl)
     return fullUrl
   }
@@ -497,10 +496,10 @@ onMounted(() => {
                   </div>
                 </template>
               </el-image>
-              <div class="image-tooltip" @click="previewImage = getFullImageUrl(scope.row.image); previewDialogVisible = true">
+              <!-- <div class="image-tooltip" @click="previewImage = getFullImageUrl(scope.row.image); previewDialogVisible = true">
                 <el-icon size="16"><Picture /></el-icon>
                 <span>预览</span>
-              </div>
+              </div> -->
             </div>
             <span v-else>-</span>
           </template>
