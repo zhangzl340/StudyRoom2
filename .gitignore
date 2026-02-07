@@ -5,3 +5,6 @@ frontend/.vscode/settings.json
 backend/.idea/
 
 frontend/example
+
+backend/upload
+backend/logs

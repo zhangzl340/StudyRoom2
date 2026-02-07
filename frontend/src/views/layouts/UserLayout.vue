@@ -49,7 +49,7 @@ const handleMenuClick = (path) => {
   <div class="user-layout">
     <el-container>
       <el-main>
-        <router-view></router-view>
+        <router-view :key="$route.fullPath"></router-view>
       </el-main>
       <el-footer>
         <div v-for="item in menuItems" :key="item.name" class="menu" :class="{ active: activeMenu === item.name }"

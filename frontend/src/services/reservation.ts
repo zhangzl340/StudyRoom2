@@ -68,6 +68,28 @@ export async function calculateReservationFee(reservationId: number) {
   })
 }
 
+// 签到
+export async function signInReservation(reservationId: number) {
+  return service({
+    url: '/reservation/signin',
+    method: 'post',
+    params: {
+      id: reservationId
+    }
+  })
+}
+
+// 签退
+export async function signOutReservation(reservationId: number) {
+  return service({
+    url: '/reservation/signout',
+    method: 'post',
+    params: {
+      id: reservationId
+    }
+  })
+}
+
 // 获取即将开始的预约
 export async function getUpcomingReservations(userId: number) {
   return service({

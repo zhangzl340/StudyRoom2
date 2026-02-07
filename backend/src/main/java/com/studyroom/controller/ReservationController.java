@@ -6,7 +6,10 @@ import com.studyroom.utils.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Date;
 
 @Tag(name = "预约模块",description = "预约模块增删改查")
 @RestController
@@ -70,11 +73,21 @@ public class ReservationController {
         return reservationService.getTodayReservations(userId);
     }
 
-    @Operation(summary = "检查预约冲突")
-    @GetMapping("/availability")
-    public Result<?> checkAvailability(@RequestParam Long seatId, @RequestParam String startTime, @RequestParam String endTime) {
+//    @Operation(summary = "检查预约冲突")
+//    @GetMapping("/availability")
+//    public Result<?> checkAvailability(@RequestParam Long seatId, @RequestParam String startTime, @RequestParam String endTime) {
+//        return reservationService.checkAvailability(seatId, startTime, endTime);
+//    }
+
+    @Operation(summary = "检查座位可用性")
+    public Result<?> checkAvailability(
+            @RequestParam Long seatId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date endTime) {
+
         return reservationService.checkAvailability(seatId, startTime, endTime);
     }
+
 
     @Operation(summary = "获取今日预约统计")
     @GetMapping("/statistics")

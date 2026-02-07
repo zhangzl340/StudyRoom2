@@ -1,8 +1,11 @@
 package com.studyroom.controller;
 
 import com.studyroom.entity.User;
+import com.studyroom.exception.UnauthorizedException;
 import com.studyroom.service.UserService;
+import com.studyroom.utils.JwtUtil;
 import com.studyroom.utils.Result;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,9 @@ public class AuthController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -65,9 +71,15 @@ public class AuthController {
     @Operation(summary = "获取当前用户信息")
     @GetMapping("/me")
     public Result<?> getCurrentUserInfo(@RequestHeader("Authorization") String token) {
-        // 这里应该从token中解析userId，暂时跳过
-        Long userId = 1L;
-        return userService.getUserInfo(userId);
+        try {
+            // 从token中解析claims
+            Claims claims = jwtUtil.parseToken(token.replace("Bearer ", ""));
+            // 获取userId
+            Long userId = Long.valueOf(claims.get("userId").toString());
+            return userService.getUserInfo(userId);
+        } catch (Exception e) {
+            throw new UnauthorizedException("无效的令牌");
+        }
     }
 
     @Operation(summary = "用户注销")

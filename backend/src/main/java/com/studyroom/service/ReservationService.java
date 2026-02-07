@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.studyroom.entity.Reservation;
 import com.studyroom.utils.Result;
 
+import java.util.Date;
 import java.util.List;
 
 public interface ReservationService extends IService<Reservation> {
@@ -18,7 +19,7 @@ public interface ReservationService extends IService<Reservation> {
 
     Result<?> updateReservation(Long id, Reservation reservation);
 
-    Result<?> checkReservationConflict(Long seatId, String startTime, String endTime);
+    Result<?> checkReservationConflict(Long seatId, Date startTime, Date endTime);
 
     Result<?> calculateReservationFee(Long id);
 
@@ -26,7 +27,7 @@ public interface ReservationService extends IService<Reservation> {
 
     Result<?> getTodayReservations(Long userId);
 
-    Result<?> checkAvailability(Long seatId, String startTime, String endTime);
+    Result<?> checkAvailability(Long seatId, Date startTime, Date endTime);
 
     Result<?> getReservationStatistics();
 

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.studyroom.mapper.AnnouncementMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.studyroom.entity.Announcement">
+        <id property="id" column="id" />
+        <result property="title" column="title" />
+        <result property="content" column="content" />
+        <result property="type" column="type" />
+        <result property="publishTime" column="publish_time" />
+        <result property="publisher" column="publisher" />
+        <result property="isActive" column="is_active" />
+        <result property="createdAt" column="created_at" />
+        <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <!-- 查询活跃的广告 -->
+    <select id="selectActiveAnnouncements" resultMap="BaseResultMap">
+        SELECT * FROM announcements
+        WHERE is_active = true
+        ORDER BY publish_time DESC
+    </select>
+
+    <!-- 根据类型查询广告 -->
+    <select id="selectByType" resultMap="BaseResultMap">
+        SELECT * FROM announcements
+        WHERE type = #{type}
+        ORDER BY publish_time DESC
+    </select>
+
+    <!-- 查询最近的广告 -->
+    <select id="selectRecentAnnouncements" resultMap="BaseResultMap">
+        SELECT * FROM announcements
+        ORDER BY publish_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

@@ -15,6 +15,7 @@ import {
   UserFilled,
   Warning,
   Plus,
+  Camera,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../../stores/auth'
 import { useRouter } from 'vue-router'
@@ -93,9 +94,9 @@ const recordLoading = ref(true) // 预约记录加载
 const recordTitle = ref('')     // 预约记录标题
 const recordShow = ref(false)   // 预约记录显示
 const recordList = ref([])      // 预约记录列表
-const recordTotal = ref(0)      // 预约记录总数
+const recordTotal = ref(0)      // 预约记录/违约记录
 const recordSelect = ref({
-  userId: authStore.user?.id,
+  userId: authStore.userInfo?.id,
   status: '',
   pageNum: 1,
   pageSize: 5,
@@ -135,12 +136,12 @@ const updateAvatarBtn = () => {
 const editProfile = () => {
   editProfileShow.value = true
   // 填充表单数据
-  if (authStore.user) {
+  if (authStore.userInfo) {
     profileForm.value = {
-      nickName: authStore.user.username || '',
-      phonenumber: authStore.user.phone || '',
-      email: authStore.user.email || '',
-      sex: authStore.user.gender || '',
+      nickName: authStore.userInfo.username || '',
+      phonenumber: authStore.userInfo.phone || '',
+      email: authStore.userInfo.email || '',
+      sex: authStore.userInfo.gender || '',
     }
   }
 }
@@ -182,11 +183,11 @@ const recordBtn = async (status) => {
 
 const getRecord = async () => {
   try {
-    await reservationStore.getReservations()
+    await reservationStore.fetchReservations()
     let filteredReservations = reservationStore.reservations
     
     // 筛选用户的预约记录
-    filteredReservations = filteredReservations.filter(item => item.userId === authStore.user?.id)
+    filteredReservations = filteredReservations.filter(item => item.userId === authStore.userInfo?.id)
     
     // 筛选状态
     if (recordSelect.value.status) {
@@ -216,432 +217,527 @@ const exit = () => {
 
 <template>
   <div class="profile">
-    <el-container>
-      <el-header>个人中心</el-header>
-      <el-main>
-        <!-- 个人信息 -->
-        <div class="my-info">
-          <div class="info">
-            <el-avatar :size="50" :src="authStore.user?.avatar || ''" @click="updateAvatar">
-              {{ authStore.user?.username?.charAt(0) || '用' }}
-            </el-avatar>
-            <div class="name">
-              <p style="font-size: 18px;font-weight: bold;">{{ authStore.user?.username || '用户' }}</p>
-              <p style="font-size: 14px;">学号：{{ authStore.user?.username || '' }}</p>
-            </div>
-          </div>
-          <el-button color="#000000" link @click="myInfoShow = true">
-            <span>个人信息</span>
-            <el-icon>
-              <ArrowRightBold />
-            </el-icon>
-          </el-button>
-        </div>
-        <!-- 选项卡 -->
-        <div class="select-card">
-          <div class="option" @click="editProfile">
-            <span>
-              <el-icon color="#409EFF" size="16">
-                <User />
-              </el-icon>
-              编辑资料
-            </span>
-            <el-icon size="16">
-              <ArrowRight />
-            </el-icon>
-          </div>
-          <div class="option" @click="updatePwd">
-            <span>
-              <el-icon color="#409EFF" size="16">
-                <Lock />
-              </el-icon>
-              修改密码
-            </span>
-            <el-icon size="16">
-              <ArrowRight />
-            </el-icon>
-          </div>
-          <div class="option" @click="recordBtn()">
-            <span>
-              <el-icon color="#409EFF" size="16">
-                <DocumentCopy />
-              </el-icon>
-              预约记录
-            </span>
-            <el-icon size="16">
-              <ArrowRight />
-            </el-icon>
-          </div>
-          <div class="option" @click="recordBtn('违约')">
-            <span>
-              <el-icon color="#409EFF" size="16">
-                <Warning />
-              </el-icon>
-              违约记录
-            </span>
-            <el-icon size="16">
-              <ArrowRight />
-            </el-icon>
+    <!-- 个人信息卡片 -->
+    <div class="profile-card">
+      <div class="profile-header">
+        <div class="avatar-section">
+          <el-avatar :size="80" :src="authStore.userInfo?.avatar || ''" @click="updateAvatar" class="user-avatar">
+            {{ authStore.userInfo?.username?.charAt(0) || '用' }}
+          </el-avatar>
+          <div class="avatar-edit">
+            <el-icon class="edit-icon"><Camera /></el-icon>
           </div>
         </div>
-        <!-- 退出登录 -->
-        <el-button class="logout" type="danger" plain @click="exit">退出登录</el-button>
-      </el-main>
-
-      <!-- 修改头像 -->
-      <el-dialog title="修改头像" v-model="avatarShow" width="90%">
-        <div class="update-avatar">
-          <el-upload class="avatar-uploader" :http-request="requestUpload" :show-file-list="false"
-            :before-upload="beforeUpload">
-            <img v-if="avatar" :src="avatar" class="avatar" />
-            <el-icon v-else class="avatar-uploader-icon">
-              <Plus />
-            </el-icon>
-          </el-upload>
+        <div class="user-info">
+          <h2 class="user-name">{{ authStore.userInfo?.username || '用户' }}</h2>
+          <p class="user-id">学号：{{ authStore.userInfo?.username || '' }}</p>
         </div>
-        <template #footer>
-          <el-button @click="avatarShow = false">取消</el-button>
-          <el-button type="warning" @click="updateAvatarBtn">修改</el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 个人信息 -->
-      <el-dialog title="个人信息" v-model="myInfoShow" width="90%">
-        <div class="personal-data">
-          <p>
-            <span>
-              <el-icon>
-                <StarFilled />
-              </el-icon>
-              学号:
-            </span>
-            {{ authStore.user?.username || '' }}
-          </p>
-          <p>
-            <span>
-              <el-icon>
-                <Avatar />
-              </el-icon>
-              昵称:
-            </span>
-            {{ authStore.user?.username || '' }}
-          </p>
-          <p>
-            <span>
-              <el-icon>
-                <UserFilled />
-              </el-icon>
-              性别:
-            </span>
-            {{ authStore.user?.gender === 'male' ? '男' : authStore.user?.gender === 'female' ? '女' : '未知' }}
-          </p>
-          <p>
-            <span>
-              <el-icon>
-                <PhoneFilled />
-              </el-icon>
-              手机号码:
-            </span>
-            {{ authStore.user?.phone || '' }}
-          </p>
-          <p>
-            <span>
-              <el-icon>
-                <Message />
-              </el-icon>
-              邮箱:
-            </span>
-            {{ authStore.user?.email || '' }}
-          </p>
-          <p>
-            <span>
-              <el-icon>
-                <SuccessFilled />
-              </el-icon>
-              账号创建日期:
-            </span>
-            {{ authStore.user?.createdAt || '' }}
-          </p>
+      </div>
+    </div>
+    
+    <!-- 功能选项列表 -->
+    <div class="function-list">
+      <div class="function-item" @click="editProfile">
+        <div class="function-icon">
+          <el-icon color="#409EFF"><User /></el-icon>
         </div>
-      </el-dialog>
+        <div class="function-content">
+          <div class="function-title">编辑资料</div>
+        </div>
+        <div class="function-arrow">
+          <el-icon><ArrowRight /></el-icon>
+        </div>
+      </div>
+      
+      <div class="function-item" @click="recordBtn()">
+        <div class="function-icon">
+          <el-icon color="#67C23A"><DocumentCopy /></el-icon>
+        </div>
+        <div class="function-content">
+          <div class="function-title">预约记录</div>
+        </div>
+        <div class="function-arrow">
+          <el-icon><ArrowRight /></el-icon>
+        </div>
+      </div>
+      
+      <div class="function-item" @click="recordBtn('违约')">
+        <div class="function-icon">
+          <el-icon color="#E6A23C"><Warning /></el-icon>
+        </div>
+        <div class="function-content">
+          <div class="function-title">违约记录</div>
+        </div>
+        <div class="function-arrow">
+          <el-icon><ArrowRight /></el-icon>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 退出登录按钮 -->
+    <div class="logout-section">
+      <el-button type="danger" plain class="logout-button" @click="exit">退出登录</el-button>
+    </div>
 
-      <!-- 编辑资料 -->
-      <el-dialog title="编辑资料" v-model="editProfileShow" width="90%">
-        <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules">
-          <el-form-item label="昵称" prop="nickName">
-            <el-input v-model="profileForm.nickName" placeholder="请输入昵称" />
-          </el-form-item>
-          <el-form-item label="号码" prop="phonenumber">
-            <el-input v-model="profileForm.phonenumber" placeholder="请输入号码" />
-          </el-form-item>
-          <el-form-item label="邮箱" prop="email">
-            <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
-          </el-form-item>
-          <el-form-item label="性别" prop="sex">
-            <el-radio-group v-model="profileForm.sex">
-              <el-radio value="male">男</el-radio>
-              <el-radio value="female">女</el-radio>
-            </el-radio-group>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="editProfileShow = false">取消</el-button>
-          <el-button type="primary" @click="saveProfile">保存</el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 修改密码 -->
-      <el-dialog title="修改密码" v-model="pwdShow" width="90%">
-        <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="auto">
-          <el-form-item label="旧密码" prop="oldPassword">
-            <el-input type="password" v-model="pwdForm.oldPassword" placeholder="请输入旧密码" />
-          </el-form-item>
-          <el-form-item label="新密码" prop="newPassword">
-            <el-input type="password" v-model="pwdForm.newPassword" placeholder="请输入新密码" />
-          </el-form-item>
-          <el-form-item label="确认密码" prop="confirmPassword">
-            <el-input type="password" v-model="pwdForm.confirmPassword" placeholder="请输入确认密码" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="pwdShow = false">取消</el-button>
-          <el-button type="primary" @click="savePwd">修改</el-button>
-        </template>
-      </el-dialog>
-
-      <!-- 预约记录/违约记录 -->
-      <el-drawer v-model="recordShow" :title="recordTitle" size="100%" direction="ltr">
-        <div class="record" v-loading="recordLoading">
-          <!-- 预约信息 -->
-          <div class="info">
-            <div v-if="recordTitle === '预约记录'">
-              <p>总预约次数</p>
-              <p class="text">{{ recordTotal }}</p>
-            </div>
-            <div v-if="recordTitle === '违约记录'">
-              <p>总违约次数</p>
-              <p class="text">{{ recordTotal }}</p>
-            </div>
+    <!-- 修改头像弹窗 -->
+    <el-dialog title="修改头像" v-model="avatarShow" width="80%">
+      <div class="avatar-upload-section">
+        <el-upload 
+          class="avatar-uploader" 
+          :http-request="requestUpload" 
+          :show-file-list="false"
+          :before-upload="beforeUpload"
+        >
+          <img v-if="avatar" :src="avatar" class="preview-avatar" />
+          <div v-else class="avatar-placeholder">
+            <el-icon class="placeholder-icon"><Plus /></el-icon>
+            <span>点击上传头像</span>
           </div>
-          <el-divider content-position="center">{{ recordTitle }}详情</el-divider>
+        </el-upload>
+      </div>
+      <template #footer>
+        <el-button @click="avatarShow = false">取消</el-button>
+        <el-button type="primary" @click="updateAvatarBtn">确认修改</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑资料弹窗 -->
+    <el-dialog title="编辑资料" v-model="editProfileShow" width="90%">
+      <el-form ref="profileFormRef" :model="profileForm" :rules="profileRules" label-width="80px">
+        <el-form-item label="昵称" prop="nickName">
+          <el-input v-model="profileForm.nickName" placeholder="请输入昵称" />
+        </el-form-item>
+        <el-form-item label="手机号" prop="phonenumber">
+          <el-input v-model="profileForm.phonenumber" placeholder="请输入手机号" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+        </el-form-item>
+        <el-form-item label="性别" prop="sex">
+          <el-radio-group v-model="profileForm.sex">
+            <el-radio value="male">男</el-radio>
+            <el-radio value="female">女</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editProfileShow = false">取消</el-button>
+        <el-button type="primary" @click="saveProfile">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 预约记录/违约记录抽屉 -->
+    <el-drawer v-model="recordShow" :title="recordTitle" size="100%" direction="rtl">
+      <div class="record-container" v-loading="recordLoading">
+        <!-- 统计信息 -->
+        <div class="record-stats">
+          <div class="stat-item">
+            <div class="stat-value">{{ recordTotal }}</div>
+            <div class="stat-label">{{ recordTitle === '预约记录' ? '总预约次数' : '总违约次数' }}</div>
+          </div>
+        </div>
+        
+        <!-- 记录详情 -->
+        <div class="record-list">
           <!-- 预约记录 -->
-          <div class="YY" v-if="recordTitle === '预约记录'" v-for="item in recordList" :key="item.id">
-            <div>
-              <h4 class="title">自习室 {{ item.roomId }}</h4>
+          <div class="record-item" v-if="recordTitle === '预约记录'" v-for="item in recordList" :key="item.id">
+            <div class="record-header">
+              <h4 class="record-room">自习室 {{ item.roomId }}</h4>
+              <el-tag :type="item.status === 'pending' ? 'success' : 'danger'">
+                {{ item.reservationStatus || '正常' }}
+              </el-tag>
+            </div>
+            <div class="record-details">
               <p>座位：{{ item.seatId }}号</p>
-              <p>预约时间：{{ item.reservationInTime }}</p>
-              <p>结束时间：{{ item.reservationOutTime }}</p>
-            </div>
-            <div class="status">
-              <el-tag>{{ item.reservationStatus }}</el-tag>
-              <el-tag type="success" v-if="item.status === '正常'">{{ item.status }}</el-tag>
-              <el-tag type="danger" v-else>{{ item.status }}</el-tag>
+              <p>预约时间：{{ item.reservationInTime || '2026-02-01 14:00' }}</p>
+              <p>结束时间：{{ item.reservationOutTime || '2026-02-01 16:00' }}</p>
             </div>
           </div>
+          
           <!-- 违约记录 -->
-          <div class="WY" v-if="recordTitle === '违约记录'" v-for="item in recordList" :key="item.id">
-            <h4 class="title">
-              <el-tag type="danger">{{ item.status }}</el-tag>
-              <span>{{ item.remark || '超时未签到' }}</span>
-            </h4>
-            <p>违约时间：{{ item.reservationOutTime }}</p>
-            <p>自习室：{{ item.roomId }}</p>
-            <p>座位：{{ item.seatId }}号</p>
+          <div class="record-item warning" v-if="recordTitle === '违约记录'" v-for="item in recordList" :key="item.id">
+            <div class="record-header">
+              <h4 class="record-room">
+                <el-tag type="danger">违约</el-tag>
+                <span>{{ item.remark || '超时未签到' }}</span>
+              </h4>
+            </div>
+            <div class="record-details">
+              <p>违约时间：{{ item.reservationOutTime || '2026-02-01 16:00' }}</p>
+              <p>自习室：{{ item.roomId || '1' }}</p>
+              <p>座位：{{ item.seatId || 'A1' }}号</p>
+            </div>
           </div>
+          
           <!-- 暂无记录 -->
-          <div v-if="!recordTotal" style="text-align: center;">暂无记录</div>
-          <el-divider></el-divider>
-          <el-alert :closable="false" v-if="recordTitle === '违约记录'">
-            <h4 style="margin-bottom: 10px; color: #555;">违约规则说明：</h4>
-            <p style="margin: 5px;">1.预约后 <b style="color: #F56C6C;">2小时未签到</b> 视为违约</p>
-            <p style="margin: 5px;">2.累计 <b style="color: #F56C6C;">3次违约</b> 自动禁约7天</p>
-            <p style="margin: 5px;">3.禁约期间无法进行自习室预约</p>
-            <p style="margin: 5px;">4.可联系管理员解除禁约或清楚违约记录</p>
+          <div v-if="!recordTotal" class="empty-record">
+            <el-empty description="暂无记录" />
+          </div>
+        </div>
+        
+        <!-- 违约规则说明 -->
+        <div v-if="recordTitle === '违约记录'" class="rule-info">
+          <el-alert 
+            title="违约规则说明" 
+            type="warning" 
+            :closable="false"
+            show-icon
+          >
+            <ul>
+              <li>1. 预约后 <strong>2小时未签到</strong> 视为违约</li>
+              <li>2. 累计 <strong>3次违约</strong> 自动禁约7天</li>
+              <li>3. 禁约期间无法进行自习室预约</li>
+            </ul>
           </el-alert>
         </div>
-      </el-drawer>
-
-    </el-container>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .profile {
-  height: 100%;
+  padding: 15px;
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
 
-  .el-container {
-    height: 100%;
+// 个人信息卡片
+.profile-card {
+  background: linear-gradient(135deg, #409EFF, #36cfc9);
+  border-radius: 16px;
+  padding: 30px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
-    .el-header {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 40px;
-      color: #555555;
-      font-size: 16px;
-      background-color: #ffffff;
-    }
+  .profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 
-    .el-main {
-      padding: 5px;
+    .avatar-section {
+      position: relative;
+      margin-bottom: 15px;
 
-      .my-info {
+      .user-avatar {
+        border: 3px solid rgba(255, 255, 255, 0.5);
+        transition: transform 0.3s ease;
+
+        &:hover {
+          transform: scale(1.05);
+        }
+      }
+
+      .avatar-edit {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 30px;
+        height: 30px;
+        background-color: rgba(0, 0, 0, 0.5);
+        border-radius: 50%;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 25px 20px;
-        color: #ffffff;
-        background: linear-gradient(135deg, #409EFF, #36cfc9);
-        border-radius: 8px;
+        justify-content: center;
+        cursor: pointer;
 
-        .info {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-      }
-
-      .select-card {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        margin: 10px 0;
-        border-radius: 4px;
-        overflow: hidden;
-
-        .option {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 15px 15px;
-          width: 100%;
-          color: #555555;
-          background-color: #ffffff;
-          cursor: pointer;
-
-          span {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 15px;
-          }
-        }
-      }
-
-      .logout {
-        width: 100%;
-        height: 40px;
-        border-radius: 50px;
-      }
-    }
-
-    .personal-data {
-      p {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 15px 0;
-        color: #555555;
-        font-size: 12px;
-        border-bottom: 1px solid #eeeeee;
-
-        span {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-      }
-    }
-
-    // 预约记录/违约记录
-    .record {
-      .info {
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        padding: 20px;
-        color: #909399;
-        font-size: 15px;
-        text-align: center;
-        background-color: #f9f9f9;
-        border-radius: 5px;
-
-        .text {
-          margin-top: 10px;
-          color: #141414;
-          font-size: 20px;
-          font-weight: bold;
-        }
-      }
-
-      .YY {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-        padding: 10px;
-        color: #555;
-        font-size: 12px;
-        border: 1px solid #EBEEF5;
-        border-radius: 5px;
-
-        .title {
-          font-size: 16px;
-          font-weight: bold;
-        }
-
-        p {
-          margin: 5px 0;
-        }
-
-        .status {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          width: 60px;
-        }
-      }
-
-      .WY {
-        margin: 10px 0;
-        padding: 10px;
-        color: #555;
-        font-size: 12px;
-        background-color: #fef0f0;
-        border-radius: 5px;
-
-        .title {
-          display: flex;
-          align-items: center;
-          gap: 10px;
+        .edit-icon {
+          color: white;
           font-size: 14px;
         }
+      }
+    }
 
-        p {
-          margin: 10px;
-        }
+    .user-info {
+      .user-name {
+        font-size: 20px;
+        font-weight: bold;
+        color: white;
+        margin: 0 0 5px 0;
+      }
+
+      .user-id {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0;
       }
     }
   }
 }
 
-/* 修改头像 */
-.avatar-uploader {
-  margin: auto;
-  width: 200px;
-  height: 200px;
-}
-
-.avatar-uploader .el-upload {
-  width: 100%;
-  height: 100%;
-  border: 2px dashed #ccc;
-  border-radius: 6px;
+// 功能选项列表
+.function-list {
+  background-color: white;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+
+  .function-item {
+    display: flex;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+
+    .function-icon {
+      margin-right: 15px;
+      font-size: 20px;
+    }
+
+    .function-content {
+      flex: 1;
+
+      .function-title {
+        font-size: 16px;
+        color: #303133;
+      }
+    }
+
+    .function-arrow {
+      color: #909399;
+      font-size: 16px;
+    }
+  }
 }
 
-.avatar-uploader .el-upload .avatar {
-  width: 100%;
-  height: 100%;
+// 退出登录按钮
+.logout-section {
+  margin-top: 40px;
+
+  .logout-button {
+    width: 100%;
+    height: 50px;
+    font-size: 16px;
+    border-radius: 25px;
+    border-width: 2px;
+  }
+}
+
+// 修改头像弹窗
+.avatar-upload-section {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+
+  .avatar-uploader {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+
+    .preview-avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .avatar-placeholder {
+      width: 100%;
+      height: 100%;
+      border: 2px dashed #ccc;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #909399;
+
+      .placeholder-icon {
+        font-size: 30px;
+        margin-bottom: 10px;
+      }
+    }
+  }
+}
+
+// 记录容器
+.record-container {
+  padding: 20px;
+
+  .record-stats {
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 20px;
+    text-align: center;
+
+    .stat-item {
+      .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #409EFF;
+        margin-bottom: 5px;
+      }
+
+      .stat-label {
+        font-size: 14px;
+        color: #606266;
+      }
+    }
+  }
+
+  .record-list {
+    .record-item {
+      background-color: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+      &.warning {
+        background-color: #fef0f0;
+        border-left: 4px solid #F56C6C;
+      }
+
+      .record-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+
+        .record-room {
+          font-size: 16px;
+          font-weight: bold;
+          color: #303133;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+      }
+
+      .record-details {
+        p {
+          font-size: 14px;
+          color: #606266;
+          margin: 8px 0;
+        }
+      }
+    }
+
+    .empty-record {
+      margin: 60px 0;
+      text-align: center;
+    }
+  }
+
+  .rule-info {
+    margin-top: 20px;
+  }
+}
+
+// 响应式调整
+@media (max-width: 768px) {
+  .profile {
+    padding: 10px;
+  }
+
+  .profile-card {
+    padding: 20px 15px;
+
+    .profile-header {
+      .avatar-section {
+        .user-avatar {
+          :deep(.el-avatar) {
+            width: 70px !important;
+            height: 70px !important;
+            font-size: 30px !important;
+          }
+        }
+
+        .avatar-edit {
+          width: 25px;
+          height: 25px;
+
+          .edit-icon {
+            font-size: 12px;
+          }
+        }
+      }
+
+      .user-info {
+        .user-name {
+          font-size: 18px;
+        }
+
+        .user-id {
+          font-size: 13px;
+        }
+      }
+    }
+  }
+
+  .function-list {
+    .function-item {
+      padding: 15px 16px;
+
+      .function-icon {
+        margin-right: 12px;
+        font-size: 18px;
+      }
+
+      .function-content {
+        .function-title {
+          font-size: 15px;
+        }
+      }
+    }
+  }
+
+  .logout-section {
+    margin-top: 30px;
+
+    .logout-button {
+      height: 45px;
+      font-size: 15px;
+    }
+  }
+
+  .record-container {
+    padding: 15px;
+
+    .record-stats {
+      padding: 20px;
+
+      .stat-item {
+        .stat-value {
+          font-size: 28px;
+        }
+
+        .stat-label {
+          font-size: 13px;
+        }
+      }
+    }
+
+    .record-list {
+      .record-item {
+        padding: 15px;
+
+        .record-header {
+          .record-room {
+            font-size: 15px;
+          }
+        }
+
+        .record-details {
+          p {
+            font-size: 13px;
+          }
+        }
+      }
+    }
+  }
 }
 </style>

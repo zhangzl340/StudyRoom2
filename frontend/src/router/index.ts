@@ -145,6 +145,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '用户管理'
         }
+      },
+      {
+        path: 'announcements',
+        name: 'AdminAnnouncements',
+        component: () => import('../views/admin/AnnouncementList.vue'),
+        meta: {
+          title: '公告管理'
+        }
       }
     ]
   }
@@ -176,7 +184,7 @@ router.beforeEach((to, _from, next) => {
     const token = localStorage.getItem('token')
     if (!token) {
       // 未登录，重定向到登录页
-      next({ path: '/login' })
+      return next({ path: '/login' })
     } else {
       // 检查角色权限
       const requiredRole = to.meta.role
@@ -192,7 +200,7 @@ router.beforeEach((to, _from, next) => {
       }
     }
   } else {
-    next()
+    return next()
   }
 })
 

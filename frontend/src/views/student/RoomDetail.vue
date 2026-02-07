@@ -1,96 +1,38 @@
 <template>
   <div class="room-detail-container">
-    <el-card class="room-detail-card">
-      <template #header>
-        <div class="card-header">
-          <h2>{{ roomInfo.name }} - 详情</h2>
-          <el-button 
-            type="primary" 
-            @click="showReservationDialog = true"
-            :disabled="roomInfo.status !== 'available'"
-          >
-            预约座位
-          </el-button>
-        </div>
-      </template>
-      
-      <!-- 自习室基本信息 -->
-      <div class="room-info-section">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <div class="info-item">
-              <label>楼栋：</label>
-              <span>{{ roomInfo.building }}</span>
-            </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="info-item">
-              <label>楼层：</label>
-              <span>{{ roomInfo.floor }}楼</span>
-            </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="info-item">
-              <label>状态：</label>
-              <el-tag :type="roomInfo.status === 'available' ? 'success' : 'danger'">
-                {{ roomInfo.status === 'available' ? '可用' : '不可用' }}
-              </el-tag>
-            </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="info-item">
-              <label>总座位数：</label>
-              <span>{{ roomInfo.totalSeats }}</span>
-            </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="info-item">
-              <label>可用座位数：</label>
-              <span class="available-seats">{{ roomInfo.availableSeats }}</span>
-            </div>
-          </el-col>
-          <el-col :span="6">
-            <div class="info-item">
-              <label>使用率：</label>
-              <span>{{ usageRate }}%</span>
-            </div>
-          </el-col>
-          <el-col :span="12">
-            <div class="info-item">
-              <label>描述：</label>
-              <span>{{ roomInfo.description || '暂无描述' }}</span>
-            </div>
-          </el-col>
-        </el-row>
+    <!-- 自习室基本信息 -->
+    <div class="room-info-card">
+      <div class="room-info-header">
+        <h2 class="room-name">{{ roomInfo.name }}</h2>
+        <el-tag :type="roomInfo.status === 'available' ? 'success' : 'danger'">
+          {{ roomInfo.status === 'available' ? '可预约' : '已满' }}
+        </el-tag>
       </div>
       
-      <!-- 座位布局 -->
-      <div class="seat-layout-section">
-        <h3>座位布局</h3>
-        <div class="layout-container">
-          <div class="seat-grid">
-            <div 
-              v-for="seat in seats" 
-              :key="seat.id"
-              class="seat-item"
-              :class="{
-                'seat-available': seat.status === 'available',
-                'seat-reserved': seat.status === 'reserved',
-                'seat-occupied': seat.status === 'occupied'
-              }"
-              @click="selectSeat(seat)"
-            >
-              <div class="seat-number">{{ seat.seatNumber }}</div>
-              <div class="seat-status">{{ seatStatusText(seat.status) }}</div>
-            </div>
-          </div>
+      <div class="room-info-details">
+        <div class="room-detail-item">
+          <el-icon class="detail-icon"><OfficeBuilding /></el-icon>
+          <span>{{ roomInfo.building }} {{ roomInfo.floor }}楼</span>
         </div>
-        
-        <!-- 座位图例 -->
+        <div class="room-detail-item">
+          <el-icon class="detail-icon"><Timer /></el-icon>
+          <span>08:00-22:00</span>
+        </div>
+        <div class="room-detail-item">
+          <el-icon class="detail-icon"><Suitcase /></el-icon>
+          <span>余位：{{ roomInfo.availableSeats }}/{{ roomInfo.totalSeats }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 座位布局 -->
+    <div class="seat-layout-section">
+      <div class="section-header">
+        <h3>选择座位</h3>
         <div class="seat-legend">
           <div class="legend-item">
             <div class="legend-color available"></div>
-            <span>可用</span>
+            <span>空闲</span>
           </div>
           <div class="legend-item">
             <div class="legend-color reserved"></div>
@@ -98,149 +40,81 @@
           </div>
           <div class="legend-item">
             <div class="legend-color occupied"></div>
-            <span>已使用</span>
+            <span>使用中</span>
           </div>
         </div>
       </div>
       
-      <!-- 座位详情 -->
-      <div v-if="selectedSeat" class="selected-seat-section">
-        <h3>座位详情</h3>
-        <el-form :model="selectedSeat" label-width="100px">
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="座位号">
-                <span>{{ selectedSeat.seatNumber }}</span>
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="状态">
-                <el-tag :type="selectedSeat.status === 'available' ? 'success' : selectedSeat.status === 'reserved' ? 'warning' : 'danger'">
-                  {{ seatStatusText(selectedSeat.status) }}
-                </el-tag>
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="位置">
-                <span>{{ selectedSeat.position || '暂无信息' }}</span>
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="类型">
-                <span>{{ selectedSeat.type || '普通座位' }}</span>
-              </el-form-item>
-            </el-col>
-            <el-col :span="24">
-              <el-form-item label="描述">
-                <span>{{ selectedSeat.description || '暂无描述' }}</span>
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-form-item>
-            <el-button 
-              type="primary" 
-              @click="reserveSelectedSeat"
-              :disabled="selectedSeat.status !== 'available'"
-            >
-              预约此座位
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-      
-      <!-- 统计信息 -->
-      <div class="stats-section">
-        <h3>使用统计</h3>
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-card shadow="hover" class="stat-card">
-              <div class="stat-item">
-                <div class="stat-value">{{ availableSeatsCount }}</div>
-                <div class="stat-label">可用座位</div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :span="6">
-            <el-card shadow="hover" class="stat-card">
-              <div class="stat-item">
-                <div class="stat-value">{{ reservedSeatsCount }}</div>
-                <div class="stat-label">已预约座位</div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :span="6">
-            <el-card shadow="hover" class="stat-card">
-              <div class="stat-item">
-                <div class="stat-value">{{ occupiedSeatsCount }}</div>
-                <div class="stat-label">已使用座位</div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :span="6">
-            <el-card shadow="hover" class="stat-card">
-              <div class="stat-item">
-                <div class="stat-value">{{ usageRate }}%</div>
-                <div class="stat-label">使用率</div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
-      
-      <!-- 预约对话框 -->
-      <el-dialog
-        v-model="showReservationDialog"
-        title="预约座位"
-        width="500px"
-      >
-        <el-form
-          ref="reservationFormRef"
-          :model="reservationForm"
-          :rules="reservationRules"
-          label-width="100px"
+      <div class="seat-grid">
+        <div 
+          v-for="seat in seats" 
+          :key="seat.id"
+          class="seat-item"
+          :class="{
+            'seat-available': seat.status === 'available',
+            'seat-reserved': seat.status === 'reserved',
+            'seat-occupied': seat.status === 'occupied',
+            'seat-selected': selectedSeat?.id === seat.id
+          }"
+          @click="selectSeat(seat)"
         >
-          <el-form-item label="自习室">
-            <span>{{ roomInfo.name }}</span>
-          </el-form-item>
-          <el-form-item label="座位号" prop="seatId">
-            <el-select v-model="reservationForm.seatId" placeholder="请选择座位">
-              <el-option 
-                v-for="seat in availableSeats" 
-                :key="seat.id" 
-                :label="seat.seatNumber" 
-                :value="seat.id" 
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="开始时间" prop="startTime">
+          <div class="seat-number">{{ seat.seatNumber }}</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 预约信息 -->
+    <div v-if="selectedSeat" class="reservation-section">
+      <div class="section-header">
+        <h3>预约信息</h3>
+      </div>
+      
+      <div class="reservation-form">
+        <div class="form-item">
+          <label>座位号：</label>
+          <span class="form-value">{{ selectedSeat.seatNumber }}</span>
+        </div>
+        
+        <div class="form-item">
+          <label>预约时间：</label>
+          <div class="time-selector">
             <el-date-picker
               v-model="reservationForm.startTime"
               type="datetime"
-              placeholder="请选择开始时间"
-              format="YYYY-MM-DD HH:mm"
+              placeholder="开始时间"
+              format="MM-DD HH:mm"
               value-format="YYYY-MM-DD HH:mm:ss"
               :min-date="new Date()"
+              class="time-picker"
             />
-          </el-form-item>
-          <el-form-item label="结束时间" prop="endTime">
+            <span class="time-separator">至</span>
             <el-date-picker
               v-model="reservationForm.endTime"
               type="datetime"
-              placeholder="请选择结束时间"
-              format="YYYY-MM-DD HH:mm"
+              placeholder="结束时间"
+              format="MM-DD HH:mm"
               value-format="YYYY-MM-DD HH:mm:ss"
               :min-date="reservationForm.startTime || new Date()"
+              class="time-picker"
             />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="showReservationDialog = false">取消</el-button>
-            <el-button type="primary" @click="submitReservation">确认预约</el-button>
-          </span>
-        </template>
-      </el-dialog>
-    </el-card>
+          </div>
+        </div>
+        
+        <div class="form-item">
+          <label>预计费用：</label>
+          <span class="price-value">¥{{ estimatedPrice }}/小时</span>
+        </div>
+        
+        <el-button 
+          type="primary" 
+          class="reserve-button"
+          @click="submitReservation"
+          :disabled="!selectedSeat || selectedSeat.status !== 'available' || !reservationForm.startTime || !reservationForm.endTime"
+        >
+          确认预约
+        </el-button>
+      </div>
+    </div>
     
     <!-- 成功提示 -->
     <el-message
@@ -266,6 +140,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRoomStore } from '../../stores/room'
+import { OfficeBuilding, Timer, Suitcase } from '@element-plus/icons-vue'
 
 // 路由
 const route = useRoute()
@@ -278,7 +153,6 @@ const roomStore = useRoomStore()
 const loading = ref(false)
 const successMessage = ref('')
 const errorMessage = ref('')
-const showReservationDialog = ref(false)
 const selectedSeat = ref<any>(null)
 
 // 自习室信息
@@ -295,106 +169,74 @@ const roomInfo = reactive({
 
 // 座位数据
 const seats = ref([
-  { id: 1, seatNumber: 'A1', status: 'available', position: 'A区1号', type: '普通座位' },
-  { id: 2, seatNumber: 'A2', status: 'available', position: 'A区2号', type: '普通座位' },
-  { id: 3, seatNumber: 'A3', status: 'reserved', position: 'A区3号', type: '普通座位' },
-  { id: 4, seatNumber: 'A4', status: 'occupied', position: 'A区4号', type: '普通座位' },
-  { id: 5, seatNumber: 'A5', status: 'available', position: 'A区5号', type: '普通座位' },
-  { id: 6, seatNumber: 'B1', status: 'available', position: 'B区1号', type: '普通座位' },
-  { id: 7, seatNumber: 'B2', status: 'available', position: 'B区2号', type: '普通座位' },
-  { id: 8, seatNumber: 'B3', status: 'available', position: 'B区3号', type: '普通座位' },
-  { id: 9, seatNumber: 'B4', status: 'reserved', position: 'B区4号', type: '普通座位' },
-  { id: 10, seatNumber: 'B5', status: 'available', position: 'B区5号', type: '普通座位' },
-  { id: 11, seatNumber: 'C1', status: 'available', position: 'C区1号', type: '普通座位' },
-  { id: 12, seatNumber: 'C2', status: 'available', position: 'C区2号', type: '普通座位' },
-  { id: 13, seatNumber: 'C3', status: 'available', position: 'C区3号', type: '普通座位' },
-  { id: 14, seatNumber: 'C4', status: 'available', position: 'C区4号', type: '普通座位' },
-  { id: 15, seatNumber: 'C5', status: 'occupied', position: 'C区5号', type: '普通座位' }
+  { id: 1, seatNumber: 'A1', status: 'available' },
+  { id: 2, seatNumber: 'A2', status: 'available' },
+  { id: 3, seatNumber: 'A3', status: 'available' },
+  { id: 4, seatNumber: 'A4', status: 'available' },
+  { id: 5, seatNumber: 'A5', status: 'available' },
+  { id: 6, seatNumber: 'B1', status: 'reserved' },
+  { id: 7, seatNumber: 'B2', status: 'available' },
+  { id: 8, seatNumber: 'B3', status: 'available' },
+  { id: 9, seatNumber: 'B4', status: 'reserved' },
+  { id: 10, seatNumber: 'B5', status: 'available' },
+  { id: 11, seatNumber: 'C1', status: 'available' },
+  { id: 12, seatNumber: 'C2', status: 'occupied' },
+  { id: 13, seatNumber: 'C3', status: 'available' },
+  { id: 14, seatNumber: 'C4', status: 'available' },
+  { id: 15, seatNumber: 'C5', status: 'available' }
 ])
 
 // 预约表单
 const reservationForm = reactive({
-  seatId: '',
   startTime: '',
   endTime: ''
 })
 
-// 表单验证规则
-const reservationRules = {
-  seatId: [
-    { required: true, message: '请选择座位', trigger: 'change' }
-  ],
-  startTime: [
-    { required: true, message: '请选择开始时间', trigger: 'change' }
-  ],
-  endTime: [
-    { required: true, message: '请选择结束时间', trigger: 'change' }
-  ]
-}
-
 // 计算属性
-const availableSeatsCount = computed(() => {
-  return seats.value.filter(seat => seat.status === 'available').length
-})
-
-const reservedSeatsCount = computed(() => {
-  return seats.value.filter(seat => seat.status === 'reserved').length
-})
-
-const occupiedSeatsCount = computed(() => {
-  return seats.value.filter(seat => seat.status === 'occupied').length
-})
-
-const usageRate = computed(() => {
-  if (roomInfo.totalSeats === 0) return 0
-  const used = reservedSeatsCount.value + occupiedSeatsCount.value
-  return Math.round((used / roomInfo.totalSeats) * 100)
-})
-
-const availableSeats = computed(() => {
-  return seats.value.filter(seat => seat.status === 'available')
+const estimatedPrice = computed(() => {
+  // 固定价格4元/小时
+  return 4
 })
 
 // 方法
-const seatStatusText = (status: string): string => {
-  switch (status) {
-    case 'available': return '可用'
-    case 'reserved': return '已预约'
-    case 'occupied': return '已使用'
-    default: return '未知'
-  }
-}
-
 const selectSeat = (seat: any) => {
-  selectedSeat.value = seat
-}
-
-const reserveSelectedSeat = () => {
-  if (!selectedSeat.value) return
-  if (selectedSeat.value.status !== 'available') {
+  if (seat.status !== 'available') {
     errorMessage.value = '该座位不可预约'
     return
   }
-  reservationForm.seatId = selectedSeat.value.id
-  showReservationDialog.value = true
+  selectedSeat.value = seat
 }
 
 const submitReservation = async () => {
+  if (!selectedSeat.value) {
+    errorMessage.value = '请选择座位'
+    return
+  }
+  
+  if (!reservationForm.startTime || !reservationForm.endTime) {
+    errorMessage.value = '请选择预约时间'
+    return
+  }
+  
   // 这里应该调用预约API
   // 暂时模拟成功
-  showReservationDialog.value = false
   successMessage.value = '预约成功'
   
   // 更新座位状态
-  const seatIndex = seats.value.findIndex(s => s.id === parseInt(reservationForm.seatId))
-  if (seatIndex !== -1 && seats.value[seatIndex]) {
+  const seatIndex = seats.value.findIndex(s => s.id === selectedSeat.value.id)
+  if (seatIndex !== -1) {
     seats.value[seatIndex].status = 'reserved'
   }
   
   // 清空表单
-  reservationForm.seatId = ''
+  selectedSeat.value = null
   reservationForm.startTime = ''
   reservationForm.endTime = ''
+  
+  // 3秒后跳转到预约列表
+  setTimeout(() => {
+    router.push('/student/reservations')
+  }, 3000)
 }
 
 const loadRoomDetail = async () => {
@@ -434,222 +276,305 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .room-detail-container {
-  padding: 20px;
+  padding: 15px;
   min-height: 100vh;
   background-color: #f5f7fa;
 }
 
-.room-detail-card {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  
-  h2 {
-    margin: 0;
-    font-size: 20px;
-    color: #303133;
-  }
-}
-
-.room-info-section {
-  margin-bottom: 30px;
+// 自习室信息卡片
+.room-info-card {
+  background-color: white;
+  border-radius: 12px;
   padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-}
-
-.info-item {
-  margin-bottom: 10px;
-  
-  label {
-    font-weight: bold;
-    color: #606266;
-    margin-right: 10px;
-  }
-  
-  span {
-    color: #303133;
-  }
-  
-  .available-seats {
-    color: #52c41a;
-    font-weight: bold;
-  }
-}
-
-.seat-layout-section {
-  margin-bottom: 30px;
-}
-
-.layout-container {
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
   margin-bottom: 20px;
-}
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-.seat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 15px;
-}
+  .room-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
 
-.seat-item {
-  padding: 15px;
-  border-radius: 8px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  
-  &.seat-available {
-    background-color: #f6ffed;
-    border-color: #b7eb8f;
-    
-    &:hover {
-      background-color: #d9f7be;
+    .room-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #303133;
+      margin: 0;
     }
   }
-  
-  &.seat-reserved {
-    background-color: #fff7e6;
-    border-color: #ffd591;
-    cursor: not-allowed;
-  }
-  
-  &.seat-occupied {
-    background-color: #fff2f0;
-    border-color: #ffccc7;
-    cursor: not-allowed;
-  }
-}
 
-.seat-number {
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
+  .room-info-details {
+    .room-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #606266;
 
-.seat-status {
-  font-size: 12px;
-  color: #606266;
-}
-
-.seat-legend {
-  display: flex;
-  gap: 30px;
-  margin-top: 20px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.legend-color {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  
-  &.available {
-    background-color: #f6ffed;
-    border: 1px solid #b7eb8f;
-  }
-  
-  &.reserved {
-    background-color: #fff7e6;
-    border: 1px solid #ffd591;
-  }
-  
-  &.occupied {
-    background-color: #fff2f0;
-    border: 1px solid #ffccc7;
+      .detail-icon {
+        font-size: 16px;
+        color: #909399;
+      }
+    }
   }
 }
 
-.selected-seat-section {
-  margin-bottom: 30px;
+// 座位布局部分
+.seat-layout-section {
+  background-color: white;
+  border-radius: 12px;
   padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-}
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-.stats-section {
-  margin-top: 30px;
-}
+  .section-header {
+    margin-bottom: 20px;
 
-.stat-card {
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    h3 {
+      font-size: 16px;
+      font-weight: bold;
+      color: #303133;
+      margin: 0 0 15px 0;
+    }
 
-.stat-item {
-  text-align: center;
-  
-  .stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: #1890ff;
-    margin-bottom: 5px;
+    .seat-legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #606266;
+
+        .legend-color {
+          width: 16px;
+          height: 16px;
+          border-radius: 4px;
+
+          &.available {
+            background-color: #67C23A;
+          }
+
+          &.reserved {
+            background-color: #E6A23C;
+          }
+
+          &.occupied {
+            background-color: #F56C6C;
+          }
+        }
+      }
+    }
   }
-  
-  .stat-label {
-    font-size: 14px;
-    color: #606266;
+
+  .seat-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+
+    .seat-item {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      font-weight: bold;
+
+      &.seat-available {
+        background-color: #F0F9EB;
+        border: 2px solid #67C23A;
+        color: #67C23A;
+
+        &:hover {
+          background-color: #E1F5E8;
+          transform: scale(1.05);
+        }
+      }
+
+      &.seat-reserved {
+        background-color: #FEF3CD;
+        border: 2px solid #E6A23C;
+        color: #E6A23C;
+        cursor: not-allowed;
+      }
+
+      &.seat-occupied {
+        background-color: #FEE2E2;
+        border: 2px solid #F56C6C;
+        color: #F56C6C;
+        cursor: not-allowed;
+      }
+
+      &.seat-selected {
+        background-color: #ECF5FF;
+        border: 2px solid #409EFF;
+        color: #409EFF;
+      }
+
+      .seat-number {
+        font-size: 14px;
+        font-weight: bold;
+      }
+    }
   }
 }
 
+// 预约信息部分
+.reservation-section {
+  background-color: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  .section-header {
+    margin-bottom: 20px;
+
+    h3 {
+      font-size: 16px;
+      font-weight: bold;
+      color: #303133;
+      margin: 0;
+    }
+  }
+
+  .reservation-form {
+    .form-item {
+      margin-bottom: 20px;
+
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #606266;
+        margin-bottom: 8px;
+      }
+
+      .form-value {
+        font-size: 14px;
+        color: #303133;
+      }
+
+      .time-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+
+        .time-picker {
+          flex: 1;
+          min-width: 120px;
+        }
+
+        .time-separator {
+          font-size: 14px;
+          color: #909399;
+        }
+      }
+
+      .price-value {
+        font-size: 16px;
+        font-weight: bold;
+        color: #F56C6C;
+      }
+    }
+
+    .reserve-button {
+      width: 100%;
+      height: 45px;
+      font-size: 16px;
+      border-radius: 25px;
+      margin-top: 10px;
+    }
+  }
+}
+
+// 响应式调整
 @media (max-width: 768px) {
   .room-detail-container {
     padding: 10px;
   }
-  
-  .room-detail-card {
-    padding: 10px;
-  }
-  
-  .room-info-section {
+
+  .room-info-card {
     padding: 15px;
+
+    .room-info-header {
+      .room-name {
+        font-size: 16px;
+      }
+    }
+
+    .room-info-details {
+      .room-detail-item {
+        font-size: 13px;
+      }
+    }
   }
-  
-  .layout-container {
+
+  .seat-layout-section {
     padding: 15px;
+
+    .seat-grid {
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+
+      .seat-item {
+        font-size: 12px;
+      }
+    }
+
+    .seat-legend {
+      gap: 15px;
+
+      .legend-item {
+        font-size: 11px;
+      }
+    }
   }
-  
-  .seat-grid {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-  }
-  
-  .seat-item {
-    padding: 10px;
-  }
-  
-  .seat-legend {
-    flex-wrap: wrap;
-    gap: 15px;
-  }
-  
-  .selected-seat-section {
+
+  .reservation-section {
     padding: 15px;
+
+    .reservation-form {
+      .form-item {
+        margin-bottom: 15px;
+
+        .time-selector {
+          flex-direction: column;
+          align-items: stretch;
+
+          .time-picker {
+            width: 100%;
+          }
+
+          .time-separator {
+            text-align: center;
+            margin: 5px 0;
+          }
+        }
+      }
+
+      .reserve-button {
+        height: 40px;
+        font-size: 14px;
+      }
+    }
   }
-  
-  .stats-section {
-    .el-col {
-      margin-bottom: 15px;
+}
+
+// 平板适配
+@media (min-width: 769px) and (max-width: 1024px) {
+  .seat-layout-section {
+    .seat-grid {
+      grid-template-columns: repeat(5, 1fr);
     }
   }
 }

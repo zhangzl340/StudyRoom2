@@ -1,79 +1,115 @@
 <template>
   <div class="student-layout">
-    <el-container>
-      <!-- 侧边栏 -->
-      <el-aside width="200px" class="sidebar">
-        <div class="sidebar-header">
-          <h3>学生中心</h3>
-        </div>
-        <el-menu
-          :default-active="activeMenu"
-          class="sidebar-menu"
-          @select="handleMenuSelect"
-        >
-          <el-menu-item index="dashboard">
-            <el-icon><House /></el-icon>
-            <span>首页</span>
-          </el-menu-item>
-          <el-menu-item index="rooms">
-            <el-icon><OfficeBuilding /></el-icon>
-            <span>自习室列表</span>
-          </el-menu-item>
-          <el-menu-item index="reservations">
-            <el-icon><Calendar /></el-icon>
-            <span>我的预约</span>
-          </el-menu-item>
-          <el-menu-item index="checkin">
-            <el-icon><Check /></el-icon>
-            <span>签到签退</span>
-          </el-menu-item>
-          <el-menu-item index="profile">
-            <el-icon><User /></el-icon>
-            <span>个人信息</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-      
-      <!-- 主内容区 -->
+    <!-- PC端布局 -->
+    <div class="pc-layout" v-if="!isMobile">
       <el-container>
-        <!-- 顶部导航 -->
-        <el-header class="header">
-          <div class="header-left">
-            <span class="breadcrumb">
-              {{ currentBreadcrumb }}
-            </span>
+        <!-- 侧边栏 -->
+        <el-aside width="200px" class="sidebar">
+          <div class="sidebar-header">
+            <h3>学生中心</h3>
           </div>
-          <div class="header-right">
-            <el-dropdown>
-              <span class="user-dropdown">
-                <el-avatar size="small">{{ userInitial }}</el-avatar>
-                <span class="user-name">{{ userName }}</span>
-                <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="goToProfile">个人信息</el-dropdown-item>
-                  <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-        </el-header>
+          <el-menu
+            :default-active="activeMenu"
+            class="sidebar-menu"
+            @select="handleMenuSelect"
+          >
+            <el-menu-item index="dashboard">
+              <el-icon><House /></el-icon>
+              <span>首页</span>
+            </el-menu-item>
+            <el-menu-item index="rooms">
+              <el-icon><OfficeBuilding /></el-icon>
+              <span>自习室列表</span>
+            </el-menu-item>
+            <el-menu-item index="reservations">
+              <el-icon><Calendar /></el-icon>
+              <span>我的预约</span>
+            </el-menu-item>
+            <el-menu-item index="checkin">
+              <el-icon><Check /></el-icon>
+              <span>签到签退</span>
+            </el-menu-item>
+            <el-menu-item index="profile">
+              <el-icon><User /></el-icon>
+              <span>个人信息</span>
+            </el-menu-item>
+          </el-menu>
+        </el-aside>
         
-        <!-- 内容区 -->
-        <el-main class="main-content">
-          <router-view />
-        </el-main>
+        <!-- 主内容区 -->
+        <el-container>
+          <!-- 顶部导航 -->
+          <el-header class="header">
+            <div class="header-left">
+              <span class="breadcrumb">
+                {{ currentBreadcrumb }}
+              </span>
+            </div>
+            <div class="header-right">
+              <el-dropdown>
+                <span class="user-dropdown">
+                  <el-avatar size="small">{{ userInitial }}</el-avatar>
+                  <span class="user-name">{{ userName }}</span>
+                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="goToProfile">个人信息</el-dropdown-item>
+                    <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </el-header>
+          
+          <!-- 内容区 -->
+          <el-main class="main-content">
+            <router-view />
+          </el-main>
+        </el-container>
       </el-container>
-    </el-container>
+    </div>
+    
+    <!-- 手机端布局 -->
+    <div class="mobile-layout" v-else>
+      <!-- 顶部导航 -->
+      <div class="mobile-header">
+        <div class="header-left">
+          <h1 class="app-title">自习室预约平台</h1>
+        </div>
+        <div class="header-right">
+          <el-icon class="notification-icon"><Bell /></el-icon>
+          <el-badge value="2" :hidden="false" class="notification-badge" />
+        </div>
+      </div>
+      
+      <!-- 内容区 -->
+      <div class="mobile-content">
+        <router-view />
+      </div>
+      
+      <!-- 底部导航栏 -->
+      <div class="mobile-footer">
+        <div 
+          v-for="item in footerItems" 
+          :key="item.index"
+          class="footer-item"
+          :class="{ active: activeMenu === item.index }"
+          @click="handleFooterItemClick(item.index)"
+        >
+          <el-icon class="footer-icon"><component :is="item.icon" /></el-icon>
+          <span class="footer-text">{{ item.text }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { House, OfficeBuilding, Calendar, Check, User, ArrowDown } from '@element-plus/icons-vue'
+import { House, OfficeBuilding, Calendar, Check, User, ArrowDown, Bell } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -83,6 +119,14 @@ const authStore = useAuthStore()
 // 状态
 const activeMenu = ref('dashboard')
 const currentBreadcrumb = ref('首页')
+const isMobile = ref(false)
+
+// 底部导航栏项目
+const footerItems = ref([
+  { index: 'dashboard', text: '首页', icon: House, path: '/student/dashboard' },
+  { index: 'rooms', text: '预约', icon: Calendar, path: '/student/rooms' },
+  { index: 'profile', text: '个人中心', icon: User, path: '/student/profile' }
+])
 
 // 计算属性
 const userName = computed(() => authStore.userInfo?.name || '学生')
@@ -100,6 +144,17 @@ function handleMenuSelect(key: string) {
     profile: '/student/profile'
   }
   
+  router.push(routeMap[key] || '/student/dashboard')
+}
+
+function handleFooterItemClick(key: string) {
+  const routeMap: Record<string, string> = {
+    dashboard: '/student/dashboard',
+    rooms: '/student/rooms',
+    profile: '/student/profile'
+  }
+  
+  activeMenu.value = key
   router.push(routeMap[key] || '/student/dashboard')
 }
 
@@ -133,9 +188,20 @@ function updateActiveMenu() {
   }
 }
 
+// 检查是否为移动端
+function checkMobile() {
+  isMobile.value = window.innerWidth <= 768
+}
+
 // 生命周期
 onMounted(() => {
   updateActiveMenu()
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 
 // 监听路由变化
@@ -148,6 +214,11 @@ router.afterEach(() => {
 .student-layout {
   height: 100vh;
   overflow: hidden;
+}
+
+/* PC端布局 */
+.pc-layout {
+  height: 100%;
 }
 
 .sidebar {
@@ -243,27 +314,111 @@ router.afterEach(() => {
   min-height: calc(100vh - 60px);
 }
 
+/* 手机端布局 */
+.mobile-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-header {
+  height: 50px;
+  background-color: #409EFF;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.notification-icon {
+  font-size: 20px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+.mobile-content {
+  flex: 1;
+  margin-top: 50px;
+  margin-bottom: 60px;
+  padding: 10px;
+  overflow-y: auto;
+  background-color: #f5f7fa;
+}
+
+.mobile-footer {
+  height: 60px;
+  background-color: white;
+  border-top: 1px solid #ebeef5;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.footer-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.footer-item.active {
+  color: #409EFF;
+}
+
+.footer-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.footer-text {
+  font-size: 12px;
+}
+
+/* 响应式设计 */
 @media (max-width: 768px) {
-  .el-aside {
-    width: 100% !important;
-    height: auto;
-    position: relative;
+  .pc-layout {
+    display: none;
   }
   
-  .header,
-  .main-content {
-    margin-left: 0;
-  }
-  
-  .sidebar-menu {
+  .mobile-layout {
     display: flex;
-    overflow-x: auto;
+  }
+}
+
+@media (min-width: 769px) {
+  .pc-layout {
+    display: block;
   }
   
-  .sidebar-menu .el-menu-item {
-    flex: 1;
-    min-width: 100px;
-    margin: 0 5px;
+  .mobile-layout {
+    display: none;
   }
 }
 </style>

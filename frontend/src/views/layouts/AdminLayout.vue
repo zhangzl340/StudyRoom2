@@ -8,6 +8,7 @@ import {
   Suitcase, 
   Calendar, 
   User, 
+  Bell,
   ArrowDown, 
   ArrowRight, 
   ArrowLeft,
@@ -65,6 +66,12 @@ const sidebarItems = [
     label: '用户管理',
     icon: User,
     path: '/admin/users'
+  },
+  {
+    name: 'announcement',
+    label: '公告管理',
+    icon: Bell,
+    path: '/admin/announcements'
   }
 ]
 

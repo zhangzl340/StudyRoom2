@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { getReservationList, createReservation, cancelReservation, getUpcomingReservations, getTodayReservations } from '../services/reservation'
+import { getReservationList, createReservation, cancelReservation, getUpcomingReservations, getTodayReservations, signInReservation, signOutReservation } from '../services/reservation'
 
 // 定义后端返回数据类型
 interface ApiResponse {
@@ -121,6 +121,50 @@ export const useReservationStore = defineStore('reservation', () => {
     }
   }
 
+  async function signInReservationRequest(reservationId: number) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await signInReservation(reservationId) as unknown as ApiResponse
+      if (response.code === 200) {
+        // 更新预约状态
+        const index = reservations.value.findIndex(res => res.id === reservationId)
+        if (index !== -1) {
+          reservations.value[index].reservationStatus = '使用中'
+          reservations.value[index].signInTime = new Date().toISOString().replace('T', ' ').split('.')[0]
+        }
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || '签到失败'
+      return { code: 500, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function signOutReservationRequest(reservationId: number) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await signOutReservation(reservationId) as unknown as ApiResponse
+      if (response.code === 200) {
+        // 更新预约状态
+        const index = reservations.value.findIndex(res => res.id === reservationId)
+        if (index !== -1) {
+          reservations.value[index].reservationStatus = '完成预约'
+          reservations.value[index].signOutTime = new Date().toISOString().replace('T', ' ').split('.')[0]
+        }
+      }
+      return response
+    } catch (err: any) {
+      error.value = err.message || '签退失败'
+      return { code: 500, message: error.value }
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     reservations,
     upcomingReservations,
@@ -134,6 +178,8 @@ export const useReservationStore = defineStore('reservation', () => {
     createReservationRequest,
     cancelReservationRequest,
     fetchUpcomingReservations,
-    fetchTodayReservationsRequest
+    fetchTodayReservationsRequest,
+    signInReservationRequest,
+    signOutReservationRequest
   }
 })

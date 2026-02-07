@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Location, Clock, Search } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import dayjs from 'dayjs'
 import { useAuthStore } from '../../stores/auth'
 import { useRoomStore } from '../../stores/room'
 import { useReservationStore } from '../../stores/reservation'
@@ -37,6 +38,9 @@ const reservationData = ref({
   reservationOutTime: null,
 })
 
+// 时间选择相关
+const timeRange = ref([])
+
 // 获取自习室列表
 const getRoomList = async () => {
   loading.value = true
@@ -69,9 +73,19 @@ const handleReset = () => {
 
 // 选择自习室
 const selectRoom = async (room) => {
-  // 自习室关闭
-  if (room.status === '关闭') {
+  // 自习室状态检查
+  if (room.status === 'closed') {
     ElMessage.error('自习室已关闭，请选择其他自习室')
+    return
+  }
+  
+  if (room.status === 'maintenance') {
+    ElMessage.error('自习室正在维修中，请选择其他自习室')
+    return
+  }
+  
+  if (room.status !== 'open') {
+    ElMessage.error('自习室暂不可用，请选择其他自习室')
     return
   }
   
@@ -100,19 +114,19 @@ const selectRoom = async (room) => {
   
   try {
     // 获取自习室座位
-    await roomStore.getSeatsByRoomId(room.id)
+    await roomStore.fetchSeats(room.id)
     seatList.value = roomStore.seats
     
-    // 检查当前用户是否已有预约
-    await reservationStore.getReservations()
-    const userReservations = reservationStore.reservations.filter(res => 
-      res.userId === authStore.user?.id && 
-      (res.reservationStatus === '已预约' || res.reservationStatus === '使用中')
-    )
+    // // 检查当前用户是否已有预约
+    // await reservationStore.getReservations()
+    // const userReservations = reservationStore.reservations.filter(res => 
+    //   res.userId === authStore.userInfo?.id && 
+    //   (res.reservationStatus === '已预约' || res.reservationStatus === '使用中')
+    // )
     
-    if (userReservations.length > 0) {
-      selectedSeat.value = userReservations[0].seatId
-    }
+    // if (userReservations.length > 0) {
+    //   selectedSeat.value = userReservations[0].seatId
+    // }
   } catch (error) {
     ElMessage.error('获取座位信息失败')
   } finally {
@@ -164,7 +178,7 @@ const getSeatClass = (seat) => {
   if (seat.status === 'fault') baseClass = 'seat-fault';
   if (seat.status === null) baseClass = 'seat-empty';
   if (seat.status === 'reserved') baseClass = 'seat-reserved';
-  if (seat.status === 'using') baseClass = 'seat-using';
+  if (seat.status === 'occupied') baseClass = 'seat-using';
   // 添加选中状态样式
   if (selectedSeat.value === seat.id) {
     baseClass += ' seat-selected'
@@ -231,7 +245,7 @@ const selectSeat = (seat) => {
   
   // 检查用户是否已有预约
   const userReservations = reservationStore.reservations.filter(res => 
-    res.userId === authStore.user?.id && 
+    res.userId === authStore.userInfo?.id && 
     (res.reservationStatus === '已预约' || res.reservationStatus === '使用中')
   )
   
@@ -247,22 +261,68 @@ const selectSeat = (seat) => {
   // 选择座位并设置预约数据
   if (seat.status === 'available') {
     selectedSeat.value = seat.id
-    const now = new Date()
-    const nowIn = new Date()
-    const nowOut = new Date()
-    nowIn.setHours(now.getHours() + 1)
-    nowOut.setHours(now.getHours() + 3)
     
-    reservationData.value = {
-      userId: authStore.user?.id,
-      seatId: seat.id,
-      status: '正常',
-      reservationStatus: '已预约',
-      // 预约时间（获取当前时间）
-      reservationInTime: nowIn.toISOString().replace('T', ' ').split('.')[0],
-      reservationOutTime: nowOut.toISOString().replace('T', ' ').split('.')[0],
+    // 检查是否选择了时间范围
+    if (timeRange.value && timeRange.value.length === 2) {
+      // 使用后端配置的日期格式：yyyy-MM-dd HH:mm:ss
+      reservationData.value = {
+        userId: authStore.userInfo?.id,
+        seatId: seat.id,
+        status: '正常',
+        reservationStatus: '已预约',
+        reservationInTime: timeRange.value[0],
+        reservationOutTime: timeRange.value[1],
+      }
+    } else {
+      // 默认时间：当前时间加1小时到3小时
+      const now = new Date()
+      const nowIn = new Date()
+      const nowOut = new Date()
+      nowIn.setHours(now.getHours() + 1)
+      nowOut.setHours(now.getHours() + 3)
+      
+      // 格式化为：yyyy-MM-dd HH:mm:ss
+      const formatDate = (date) => {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hours}:${minutes}:00`
+      }
+      
+      reservationData.value = {
+        userId: authStore.userInfo?.id,
+        seatId: seat.id,
+        status: '正常',
+        reservationStatus: '已预约',
+        reservationInTime: formatDate(nowIn),
+        reservationOutTime: formatDate(nowOut),
+      }
     }
   }
+}
+
+// 获取完整图片URL的方法
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return ''
+  console.log('原始图片路径:', imagePath)
+  // 如果已经是完整的URL，直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath
+  }
+  
+  // 如果是以 / 开头，表示是绝对路径
+  if (imagePath.startsWith('/')) {
+    // 根据您的后端地址拼接完整URL，包含/api前缀
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const fullUrl = `${baseURL}/api${imagePath}`
+    console.log('拼接后的完整URL:', fullUrl)
+    return fullUrl
+  }
+  
+  // 其他情况直接返回
+  return imagePath
 }
 
 // 提交预约
@@ -280,7 +340,7 @@ const handleReservation = async () => {
   try {
     // 检查用户是否被禁约
     const userReservations = reservationStore.reservations.filter(res => 
-      res.userId === authStore.user?.id && 
+      res.userId === authStore.userInfo?.id && 
       res.reservationStatus === '违约中'
     )
     
@@ -290,11 +350,11 @@ const handleReservation = async () => {
     }
     
     // 提交预约
-    await reservationStore.createReservation(reservationData.value)
+    await reservationStore.createReservationRequest(reservationData.value)
     roomShow.value = false
     ElMessage.success('预约成功')
     // 刷新预约列表
-    await reservationStore.getReservations()
+    await reservationStore.fetchReservations()
   } catch (error) {
     ElMessage.error('预约失败：' + error.message)
   }
@@ -302,38 +362,12 @@ const handleReservation = async () => {
 
 // 初始化数据
 const initData = async () => {
+  // 先获取用户信息
+  if (!authStore.userInfo && authStore.token) {
+    await authStore.fetchUserInfo()
+  }
   await getRoomList()
-  await reservationStore.getReservations()
-}
-
-// 获取自习室列表
-const getRoomList = async () => {
-  loading.value = true
-  try {
-    await roomStore.getRooms(searchKeyword.value)
-    roomList.value = roomStore.rooms
-  } catch (error) {
-    ElMessage.error('获取自习室列表失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-// 搜索自习室
-const handleSearch = () => {
-  if (!searchKeyword.value) {
-    ElMessage.error('请输入自习室名称')
-    return
-  }
-  resetBtnShow.value = true
-  getRoomList()
-}
-
-// 重置搜索
-const handleReset = () => {
-  searchKeyword.value = ''
-  resetBtnShow.value = false
-  getRoomList()
+  await reservationStore.fetchReservations()
 }
 
 // 初始化数据
@@ -357,7 +391,7 @@ initData()
         <div class="room-list" v-loading="loading">
           <div class="room-card" v-for="item in roomList" :key="item.id" @click="selectRoom(item)">
             <div class="room-image">
-              <img :src="item.image || 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20study%20room%20interior&image_size=landscape_16_9'" alt="自习室图片">
+              <img :src="getFullImageUrl(item.image) || 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20study%20room%20interior&image_size=landscape_16_9'" alt="自习室图片">
             </div>
             <div class="left">
               <h4>{{ item.name }}</h4>
@@ -376,8 +410,10 @@ initData()
             </div>
             <div class="right">
               <p>
-                <el-tag type="success" v-if="item.status === 'available'">状态：正常运营</el-tag>
-                <el-tag type="danger" v-else>状态：暂未开放</el-tag>
+                <el-tag type="success" v-if="item.status === 'open'">状态：正常运营</el-tag>
+                <el-tag type="danger" v-else-if="item.status === 'closed'">状态：已关闭</el-tag>
+                <el-tag type="warning" v-else-if="item.status === 'maintenance'">状态：维修中</el-tag>
+                <el-tag type="info" v-else>状态：{{ item.status }}</el-tag>
               </p>
               <p><el-tag>布局：{{ item.rowsCount }}行 × {{ item.colsCount }}列</el-tag></p>
             </div>
@@ -401,6 +437,35 @@ initData()
               <Clock />
             </el-icon>
             {{ roomData.openTime }} ~ {{ roomData.closeTime }}
+          </p>
+          <p class="time-picker-container">
+            <el-icon>
+              <Clock />
+            </el-icon>
+            <span>预约时间：</span>
+            <el-date-picker
+              v-model="timeRange"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="开始时间"
+              end-placeholder="结束时间"
+              format="YYYY-MM-DD HH:mm:ss"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              :disabled-date="(time) => {
+                return dayjs(time).isBefore(dayjs(), 'day')
+              }"
+              :disabled-time="(date, type) => {
+                const hour = date.getHours()
+                const roomOpenHour = parseInt(roomData.openTime.split(':')[0])
+                const roomCloseHour = parseInt(roomData.closeTime.split(':')[0])
+                return {
+                  disabledHours: () => {
+                    return Array.from({length: 24}, (_, i) => i).filter(h => h < roomOpenHour || h >= roomCloseHour)
+                  }
+                }
+              }"
+              style="width: 100%"
+            />
           </p>
         </div>
         
@@ -431,10 +496,11 @@ initData()
               @click="selectSeat(seat)">
               {{ seat.seatNumber }}
               <span v-if="seat.id === selectedSeat">已选择</span>
-              <span v-else-if="seat.status === 'available'">空闲</span>
+              <!-- <span v-else-if="seat.status === 'available'">空闲</span>
               <span v-else-if="seat.status === 'fault'">故障</span>
               <span v-else-if="seat.status === 'reserved'">已预约</span>
-              <span v-else-if="seat.status === 'using'">使用中</span>
+              <span v-else-if="seat.status === 'occupied'">使用中</span> -->
+              <span v-else>{{ seat.seatNum }}</span>
             </div>
           </div>
         </div>
@@ -550,6 +616,23 @@ initData()
         padding: 4px 0;
         color: #555555;
         font-size: 12px;
+      }
+
+      .time-picker-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin: 10px 0;
+
+        span {
+          font-weight: 500;
+        }
+
+        .el-date-picker {
+          width: 100% !important;
+          max-width: none !important;
+        }
       }
     }
 

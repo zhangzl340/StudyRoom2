@@ -40,6 +40,9 @@ public class SecurityConfig {
                 .requestMatchers("/user/**").permitAll()
                 .requestMatchers("/room/**").permitAll()
                 .requestMatchers("/seat/**").permitAll()
+                .requestMatchers("/announcement/**").permitAll()
+                .requestMatchers("/reservation/**").permitAll()
+
                     // 运行访问静态资源
                 .requestMatchers("/upload/**","/static/**","/images/**").permitAll()
                 // 其他请求需要认证

@@ -79,6 +79,9 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await getCurrentUserInfo() as unknown as ApiResponse
       if (response.code === 200) {
         userInfo.value = response.data
+        // 更新localStorage中的角色和用户ID，确保与后端一致
+        localStorage.setItem('role', response.data.role)
+        localStorage.setItem('userId', response.data.id.toString())
       }
       return response
     } catch (err: any) {

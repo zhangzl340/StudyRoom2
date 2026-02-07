@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public Result<?> handleUnauthorizedException(UnauthorizedException e, HttpServletRequest request) {
         log.error("未授权异常，请求路径: {}", request.getRequestURI(), e);
-        return Result.unauthorized();
+        return Result.error(401, e.getMessage());  // 传递具体的异常消息
     }
 
     @ExceptionHandler(ForbiddenException.class)

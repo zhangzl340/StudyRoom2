@@ -34,10 +34,17 @@ const handleLogin = async () => {
         loading.value = true
         try {
           const res = await authStore.login(loginForm.value.username, loginForm.value.password)
-          console.log("res = " + res.code)
-          console.log("token = " + localStorage.getItem('role'))
-          ElMessage.success('登录成功')
-          router.replace('/student/dashboard')
+          if (res.code === 200) {
+            localStorage.setItem('role', res.data.user.role)
+            ElMessage.success('登录成功')
+            if(res.data.user.role === 'student'){
+              router.replace('/student/dashboard')
+            }else{
+              router.replace('/admin/dashboard')
+            }
+          }
+          
+          
         } catch (error) {
           ElMessage.error(error.message || '登录失败')
         } finally {

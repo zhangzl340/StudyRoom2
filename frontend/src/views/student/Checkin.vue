@@ -1,466 +1,405 @@
-<template>
-  <div class="checkin-container">
-    <h2>签到签退</h2>
-    
-    <!-- 待签到预约 -->
-    <div class="pending-reservations">
-      <h3>待签到预约</h3>
-      <el-card v-if="pendingReservations.length > 0" class="reservation-card">
-        <div v-for="reservation in pendingReservations" :key="reservation.id" class="reservation-item">
-          <div class="reservation-info">
-            <div class="info-row">
-              <span class="label">自习室：</span>
-              <span class="value">{{ reservation.room.name }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">座位：</span>
-              <span class="value">{{ reservation.seat.seatNumber }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">开始时间：</span>
-              <span class="value">{{ formatDateTime(reservation.startTime) }}</span>
-            </div>
-            <div class="info-row">
-              <span class="label">结束时间：</span>
-              <span class="value">{{ formatDateTime(reservation.endTime) }}</span>
-            </div>
-          </div>
-          
-          <div class="checkin-actions">
-            <el-button type="primary" @click="startCheckin(reservation.id)">
-              开始签到
-            </el-button>
-          </div>
-        </div>
-      </el-card>
-      <el-empty v-else description="暂无待签到预约" />
-    </div>
-    
-    <!-- 签到区域 -->
-    <div v-if="checkinMode" class="checkin-area">
-      <h3>{{ isSigningIn ? '签到' : '签退' }}</h3>
-      
-      <el-card class="checkin-card">
-        <!-- 二维码扫描 -->
-        <div class="scan-section">
-          <h4>扫描二维码{{ isSigningIn ? '签到' : '签退' }}</h4>
-          <div class="qrcode-scanner" ref="scannerRef">
-            <qrcode-stream
-              @decode="onDecode"
-              @init="onInit"
-              style="width: 100%"
-            >
-              <div class="scanner-overlay">
-                <div class="scanner-frame"></div>
-              </div>
-            </qrcode-stream>
-          </div>
-          <p class="scan-tip">请将摄像头对准自习室的{{ isSigningIn ? '签到' : '签退' }}二维码</p>
-        </div>
-        
-        <!-- 手动签到 -->
-        <div class="manual-section">
-          <h4>手动{{ isSigningIn ? '签到' : '签退' }}</h4>
-          <el-form :model="manualCheckinForm" label-width="80px">
-            <el-form-item label="预约ID">
-              <el-input v-model="manualCheckinForm.reservationId" placeholder="请输入预约ID" />
-            </el-form-item>
-            <el-form-item label="验证码">
-              <el-input v-model="manualCheckinForm.verificationCode" placeholder="请输入自习室验证码" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="manualCheckin">
-                {{ isSigningIn ? '手动签到' : '手动签退' }}
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </div>
-      </el-card>
-      
-      <el-button @click="cancelCheckin">取消</el-button>
-    </div>
-    
-    <!-- 签到历史 -->
-    <div class="checkin-history">
-      <h3>签到历史</h3>
-      <el-table
-        v-loading="loading"
-        :data="checkinHistory"
-        style="width: 100%"
-        stripe
-      >
-        <el-table-column prop="id" label="记录ID" width="100" />
-        <el-table-column label="预约信息" width="300">
-          <template #default="scope">
-            <div>
-              <div>{{ scope.row.reservation.room.name }} - 座位 {{ scope.row.reservation.seat.seatNumber }}</div>
-              <div class="text-sm text-gray-500">{{ formatDateTime(scope.row.reservation.startTime) }} - {{ formatDateTime(scope.row.reservation.endTime) }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="签到时间" width="180">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.checkinTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="签退时间" width="180">
-          <template #default="scope">
-            {{ scope.row.checkoutTime ? formatDateTime(scope.row.checkoutTime) : '未签退' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="120">
-          <template #default="scope">
-            <el-tag
-              :type="scope.row.checkoutTime ? 'success' : 'warning'"
-              size="small"
-            >
-              {{ scope.row.checkoutTime ? '已完成' : '进行中' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-    
-    <!-- 签到成功提示 -->
-    <el-dialog
-      v-model="successDialogVisible"
-      title="操作成功"
-      width="400px"
-    >
-      <div class="success-content">
-        <el-icon class="success-icon"><CircleCheck /></el-icon>
-        <p>{{ successMessage }}</p>
-      </div>
-    </el-dialog>
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+<script setup>
+import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CircleCheck } from '@element-plus/icons-vue'
-import dayjs from 'dayjs'
-import { QrcodeStream } from 'vue-qrcode-reader'
-import { useReservationStore } from '@/stores/reservation'
+import { Clock, Check, Close, Refresh } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
+import { useReservationStore } from '../../stores/reservation'
+import { signInReservation, signOutReservation } from '../../services/reservation'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 const reservationStore = useReservationStore()
 
-// 状态
-const checkinMode = ref(false)
-const isSigningIn = ref(true)
-const currentReservationId = ref<number | null>(null)
-const scannerRef = ref<HTMLElement | null>(null)
+// 加载状态
 const loading = ref(false)
-const successDialogVisible = ref(false)
-const successMessage = ref('')
+const loading2 = ref(false)
 
-// 表单
-const manualCheckinForm = ref({
-  reservationId: '',
-  verificationCode: ''
-})
+// 预约信息
+const reservationInfo = ref(null)
+const reservationId = ref(route.query.reservationId || null)
 
-// 数据
-const pendingReservations = ref<any[]>([])
-const checkinHistory = ref<any[]>([])
+// 座位信息
+const seatInfo = ref(null)
+const roomInfo = ref(null)
 
-// 计算属性
-// const canCheckin = computed(() => {
-//   return pendingReservations.value.length > 0
-// })
-
-// 方法
-function formatDateTime(dateTime: string) {
-  return dayjs(dateTime).format('YYYY-MM-DD HH:mm')
-}
-
-async function fetchPendingReservations() {
-  // 这里应该调用API获取待签到的预约
-  // 暂时使用模拟数据
-  pendingReservations.value = reservationStore.upcomingReservations.filter(
-    (res: any) => res.status === 'active' && dayjs(res.startTime).isAfter(dayjs().subtract(1, 'hour'))
-  )
-}
-
-async function fetchCheckinHistory() {
-  loading.value = true
-  try {
-    // 这里应该调用API获取签到历史
-    // 暂时使用模拟数据
-    checkinHistory.value = [
-      {
-        id: 1,
-        reservation: {
-          id: 1,
-          room: { name: '自习室A' },
-          seat: { seatNumber: 'A1' },
-          startTime: dayjs().subtract(2, 'hour').format(),
-          endTime: dayjs().add(1, 'hour').format()
-        },
-        checkinTime: dayjs().subtract(2, 'hour').format(),
-        checkoutTime: null
-      },
-      {
-        id: 2,
-        reservation: {
-          id: 2,
-          room: { name: '自习室B' },
-          seat: { seatNumber: 'B2' },
-          startTime: dayjs().subtract(1, 'day').format(),
-          endTime: dayjs().subtract(1, 'day').add(3, 'hour').format()
-        },
-        checkinTime: dayjs().subtract(1, 'day').format(),
-        checkoutTime: dayjs().subtract(1, 'day').add(3, 'hour').format()
-      }
-    ]
-  } catch (error) {
-    ElMessage.error('获取签到历史失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-function startCheckin(reservationId: number) {
-  currentReservationId.value = reservationId
-  isSigningIn.value = true
-  checkinMode.value = true
-}
-
-function cancelCheckin() {
-  checkinMode.value = false
-  currentReservationId.value = null
-  manualCheckinForm.value = {
-    reservationId: '',
-    verificationCode: ''
-  }
-}
-
-function onDecode(result: string) {
-  // 解析二维码结果
-  console.log('二维码内容:', result)
-  
-  // 这里应该验证二维码内容是否有效
-  // 然后调用签到/签退API
-  if (currentReservationId.value) {
-    performCheckin()
-  }
-}
-
-function onInit(promise: Promise<any>) {
-  promise
-    .then((result) => {
-      console.log('摄像头初始化成功:', result)
-    })
-    .catch((error) => {
-      console.error('摄像头初始化失败:', error)
-      ElMessage.warning('摄像头初始化失败，请检查权限设置')
-    })
-}
-
-async function manualCheckin() {
-  if (!manualCheckinForm.value.reservationId || !manualCheckinForm.value.verificationCode) {
-    ElMessage.warning('请填写完整信息')
+// 获取预约详情
+const fetchReservationDetail = async () => {
+  if (!reservationId.value) {
+    ElMessage.error('预约ID不能为空')
+    router.push('/student')
     return
   }
   
-  await performCheckin()
-}
-
-async function performCheckin() {
   loading.value = true
   try {
-    // 这里应该调用实际的签到/签退API
-    // 暂时模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // 先获取所有预约，然后筛选出当前预约
+    await reservationStore.fetchReservations()
+    const reservation = reservationStore.reservations.find(res => res.id === parseInt(reservationId.value))
     
-    successMessage.value = isSigningIn.value ? '签到成功！' : '签退成功！'
-    successDialogVisible.value = true
-    
-    // 重置状态
-    checkinMode.value = false
-    currentReservationId.value = null
-    manualCheckinForm.value = {
-      reservationId: '',
-      verificationCode: ''
+    if (reservation) {
+      reservationInfo.value = reservation
+      // 这里可以根据需要获取座位和自习室信息
+    } else {
+      ElMessage.error('预约信息不存在')
+      router.push('/student')
     }
-    
-    // 刷新数据
-    await fetchPendingReservations()
-    await fetchCheckinHistory()
   } catch (error) {
-    ElMessage.error(isSigningIn.value ? '签到失败' : '签退失败')
+    ElMessage.error('获取预约信息失败')
   } finally {
     loading.value = false
   }
 }
 
-// 生命周期
-onMounted(async () => {
-  // 检查URL参数是否有预约ID
-  const reservationId = route.query.reservationId
-  if (reservationId) {
-    startCheckin(parseInt(reservationId as string))
-  }
+// 签到
+const handleSignIn = async () => {
+  if (!reservationInfo.value) return
   
-  await fetchPendingReservations()
-  await fetchCheckinHistory()
-})
-
-onUnmounted(() => {
-  // 清理摄像头资源
-  if (scannerRef.value) {
-    // 这里可以添加清理逻辑
+  loading2.value = true
+  try {
+    const response = await signInReservation(reservationInfo.value.id)
+    if (response.code === 200) {
+      ElMessage.success('签到成功')
+      // 更新预约状态
+      reservationInfo.value.reservationStatus = '使用中'
+      reservationInfo.value.signInTime = new Date().toISOString().replace('T', ' ').split('.')[0]
+      // 刷新预约列表
+      await reservationStore.fetchReservations()
+    } else {
+      ElMessage.error('签到失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('签到失败：' + error.message)
+  } finally {
+    loading2.value = false
   }
+}
+
+// 签退
+const handleSignOut = async () => {
+  if (!reservationInfo.value) return
+  
+  loading2.value = true
+  try {
+    const response = await signOutReservation(reservationInfo.value.id)
+    if (response.code === 200) {
+      ElMessage.success('签退成功')
+      // 更新预约状态
+      reservationInfo.value.reservationStatus = '完成预约'
+      reservationInfo.value.signOutTime = new Date().toISOString().replace('T', ' ').split('.')[0]
+      // 刷新预约列表
+      await reservationStore.fetchReservations()
+    } else {
+      ElMessage.error('签退失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('签退失败：' + error.message)
+  } finally {
+    loading2.value = false
+  }
+}
+
+// 取消预约
+const handleCancelReservation = async () => {
+  if (!reservationInfo.value) return
+  
+  try {
+    await reservationStore.cancelReservationRequest(reservationInfo.value.id)
+    ElMessage.success('取消预约成功')
+    router.push('/student')
+  } catch (error) {
+    ElMessage.error('取消预约失败')
+  }
+}
+
+// 刷新预约信息
+const refreshReservationInfo = async () => {
+  await fetchReservationDetail()
+}
+
+// 初始化
+onMounted(async () => {
+  // 先获取用户信息
+  if (!authStore.userInfo && authStore.token) {
+    await authStore.fetchUserInfo()
+  }
+  await fetchReservationDetail()
 })
 </script>
 
-<style scoped>
-.checkin-container {
-  padding: 20px;
+<template>
+  <div class="checkin">
+    <el-container>
+      <el-header>签到</el-header>
+      <el-main>
+        <div class="checkin-card" v-loading="loading">
+          <div v-if="reservationInfo" class="reservation-info">
+            <div class="info-header">
+              <h3>预约信息</h3>
+              <el-button type="primary" size="small" icon="Refresh" @click="refreshReservationInfo">
+                刷新
+              </el-button>
+            </div>
+            
+            <div class="info-content">
+              <div class="info-item">
+                <span class="label">自习室：</span>
+                <span class="value">{{ reservationInfo.roomId || '未知' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">座位号：</span>
+                <span class="value">{{ reservationInfo.seatId || '未知' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">预约状态：</span>
+                <span class="value" :class="{
+                  'status-reserved': reservationInfo.reservationStatus === '已预约',
+                  'status-using': reservationInfo.reservationStatus === '使用中',
+                  'status-completed': reservationInfo.reservationStatus === '完成预约',
+                  'status-cancelled': reservationInfo.reservationStatus === '取消预约',
+                  'status-default': reservationInfo.reservationStatus === '违约中'
+                }">{{ reservationInfo.reservationStatus }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">预约时间：</span>
+                <span class="value">{{ reservationInfo.reservationInTime }} - {{ reservationInfo.reservationOutTime }}</span>
+              </div>
+              <div class="info-item" v-if="reservationInfo.signInTime">
+                <span class="label">签到时间：</span>
+                <span class="value">{{ reservationInfo.signInTime }}</span>
+              </div>
+              <div class="info-item" v-if="reservationInfo.signOutTime">
+                <span class="label">签退时间：</span>
+                <span class="value">{{ reservationInfo.signOutTime }}</span>
+              </div>
+            </div>
+            
+            <div class="action-buttons" v-loading="loading2">
+              <!-- 已预约状态 -->
+              <div v-if="reservationInfo.reservationStatus === '已预约'" class="buttons-group">
+                <el-button type="primary" size="large" @click="handleSignIn">
+                  <el-icon><Check /></el-icon>
+                  立即签到
+                </el-button>
+                <el-button type="danger" size="large" @click="handleCancelReservation">
+                  <el-icon><Close /></el-icon>
+                  取消预约
+                </el-button>
+              </div>
+              
+              <!-- 使用中状态 -->
+              <div v-else-if="reservationInfo.reservationStatus === '使用中'" class="buttons-group">
+                <el-button type="warning" size="large" @click="handleSignOut">
+                  <el-icon><Close /></el-icon>
+                  立即签退
+                </el-button>
+              </div>
+              
+              <!-- 其他状态 -->
+              <div v-else class="status-message">
+                <p class="message">{{ 
+                  reservationInfo.reservationStatus === '完成预约' ? '预约已完成' :
+                  reservationInfo.reservationStatus === '取消预约' ? '预约已取消' :
+                  reservationInfo.reservationStatus === '违约中' ? '预约已违约' :
+                  '预约状态异常'
+                }}</p>
+                <el-button type="primary" size="large" @click="router.push('/student')">
+                  返回首页
+                </el-button>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="empty-info">
+            <el-empty description="未找到预约信息" />
+            <el-button type="primary" @click="router.push('/student')">
+              返回首页
+            </el-button>
+          </div>
+        </div>
+      </el-main>
+    </el-container>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.checkin {
+  height: 100%;
   background-color: #f5f7fa;
-  min-height: 100vh;
-}
+  padding: 10px;
 
-h2 {
-  margin-bottom: 30px;
-  color: #303133;
-}
+  .el-container {
+    height: 100%;
 
-h3 {
-  margin-bottom: 20px;
-  color: #409eff;
-}
+    .el-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      color: #555555;
+      font-size: 16px;
+      background-color: #ffffff;
+    }
 
-.pending-reservations,
-.checkin-area,
-.checkin-history {
-  margin-bottom: 40px;
-}
+    .el-main {
+      padding: 10px;
 
-.reservation-card {
-  margin-bottom: 20px;
-}
+      .checkin-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-.reservation-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
-  border-bottom: 1px solid #ebeef5;
-}
+        .info-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
 
-.reservation-item:last-child {
-  border-bottom: none;
-}
+          h3 {
+            font-size: 18px;
+            color: #333333;
+            margin: 0;
+          }
+        }
 
-.reservation-info {
-  flex: 1;
-}
+        .info-content {
+          background-color: #f9f9f9;
+          border-radius: 8px;
+          padding: 15px;
+          margin-bottom: 20px;
 
-.info-row {
-  margin-bottom: 8px;
-}
+          .info-item {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: center;
 
-.label {
-  font-weight: 500;
-  color: #606266;
-  margin-right: 10px;
-}
+            &:last-child {
+              margin-bottom: 0;
+            }
 
-.value {
-  color: #303133;
-}
+            .label {
+              width: 80px;
+              font-size: 14px;
+              color: #606266;
+            }
 
-.checkin-actions {
-  margin-left: 20px;
-}
+            .value {
+              flex: 1;
+              font-size: 14px;
+              color: #333333;
+            }
 
-.checkin-card {
-  padding: 20px;
-}
+            .status-reserved {
+              color: #409EFF;
+              font-weight: 500;
+            }
 
-.scan-section {
-  margin-bottom: 30px;
-}
+            .status-using {
+              color: #67C23A;
+              font-weight: 500;
+            }
 
-.scan-section h4,
-.manual-section h4 {
-  margin-bottom: 15px;
-  color: #606266;
-}
+            .status-completed {
+              color: #909399;
+              font-weight: 500;
+            }
 
-.qrcode-scanner {
-  width: 300px;
-  height: 300px;
-  margin: 0 auto 20px;
-  position: relative;
-}
+            .status-cancelled {
+              color: #F56C6C;
+              font-weight: 500;
+            }
 
-.scanner-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+            .status-default {
+              color: #E6A23C;
+              font-weight: 500;
+            }
+          }
+        }
 
-.scanner-frame {
-  width: 200px;
-  height: 200px;
-  border: 2px solid #409eff;
-  position: relative;
-}
+        .action-buttons {
+          .buttons-group {
+            display: flex;
+            gap: 10px;
 
-.scanner-frame::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #409eff;
-  animation: scan 2s linear infinite;
-}
+            .el-button {
+              flex: 1;
+            }
+          }
 
-@keyframes scan {
-  0% {
-    top: 0;
+          .status-message {
+            text-align: center;
+            padding: 30px 0;
+
+            .message {
+              font-size: 16px;
+              color: #606266;
+              margin-bottom: 20px;
+            }
+
+            .el-button {
+              width: 200px;
+            }
+          }
+        }
+
+        .empty-info {
+          text-align: center;
+          padding: 50px 0;
+
+          .el-button {
+            margin-top: 20px;
+          }
+        }
+      }
+    }
   }
-  100% {
-    top: 100%;
+
+  // 响应式调整
+  @media (max-width: 768px) {
+    padding: 5px;
+
+    .el-main {
+      padding: 5px;
+
+      .checkin-card {
+        padding: 15px;
+
+        .info-header {
+          h3 {
+            font-size: 16px;
+          }
+        }
+
+        .info-content {
+          padding: 12px;
+
+          .info-item {
+            margin-bottom: 10px;
+
+            .label {
+              width: 70px;
+              font-size: 13px;
+            }
+
+            .value {
+              font-size: 13px;
+            }
+          }
+        }
+
+        .action-buttons {
+          .buttons-group {
+            flex-direction: column;
+
+            .el-button {
+              width: 100%;
+            }
+          }
+        }
+      }
+    }
   }
-}
-
-.scan-tip {
-  text-align: center;
-  color: #909399;
-  margin-top: 10px;
-}
-
-.manual-section {
-  border-top: 1px solid #ebeef5;
-  padding-top: 20px;
-}
-
-.success-content {
-  text-align: center;
-  padding: 20px;
-}
-
-.success-icon {
-  font-size: 48px;
-  color: #67c23a;
-  margin-bottom: 20px;
-}
-
-.success-content p {
-  font-size: 16px;
-  color: #303133;
 }
 </style>
