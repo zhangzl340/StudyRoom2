@@ -5,12 +5,14 @@ import { Clock, Check, Close, Refresh } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useReservationStore } from '../../stores/reservation'
+import { useRoomStore } from '../../stores/room'
 import { signInReservation, signOutReservation } from '../../services/reservation'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const reservationStore = useReservationStore()
+const roomStore = useRoomStore()
 
 // 加载状态
 const loading = ref(false)
@@ -40,7 +42,32 @@ const fetchReservationDetail = async () => {
     
     if (reservation) {
       reservationInfo.value = reservation
-      // 这里可以根据需要获取座位和自习室信息
+      
+      // 获取所有自习室和座位信息
+      await roomStore.getRooms()
+      
+      // 遍历所有自习室，获取座位信息
+      let foundRoom = null
+      for (const room of roomStore.rooms) {
+        try {
+          await roomStore.fetchSeats(room.id)
+          const seat = roomStore.seats.find(s => s.id === parseInt(reservation.seatId))
+          if (seat) {
+            foundRoom = room
+            reservation.roomId = room.id
+            break
+          }
+        } catch (error) {
+          console.error(`获取自习室 ${room.id} 的座位信息失败:`, error)
+        }
+      }
+      
+      if (foundRoom) {
+        roomInfo.value = foundRoom
+      }
+      
+      console.log('预约信息:', reservation)
+      console.log('自习室信息:', roomInfo.value)
     } else {
       ElMessage.error('预约信息不存在')
       router.push('/student')
@@ -145,7 +172,7 @@ onMounted(async () => {
             <div class="info-content">
               <div class="info-item">
                 <span class="label">自习室：</span>
-                <span class="value">{{ reservationInfo.roomId || '未知' }}</span>
+                <span class="value">{{ roomInfo?.name || reservationInfo.roomId || '未知' }}</span>
               </div>
               <div class="info-item">
                 <span class="label">座位号：</span>
@@ -322,9 +349,12 @@ onMounted(async () => {
           .buttons-group {
             display: flex;
             gap: 10px;
+            align-items: center;
+            justify-content: center;
 
             .el-button {
               flex: 1;
+              min-width: 120px;
             }
           }
 

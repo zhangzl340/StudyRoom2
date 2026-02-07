@@ -73,11 +73,6 @@ public class ReservationController {
         return reservationService.getTodayReservations(userId);
     }
 
-//    @Operation(summary = "检查预约冲突")
-//    @GetMapping("/availability")
-//    public Result<?> checkAvailability(@RequestParam Long seatId, @RequestParam String startTime, @RequestParam String endTime) {
-//        return reservationService.checkAvailability(seatId, startTime, endTime);
-//    }
 
     @Operation(summary = "检查座位可用性")
     public Result<?> checkAvailability(

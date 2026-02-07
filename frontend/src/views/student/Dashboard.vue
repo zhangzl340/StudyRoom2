@@ -6,10 +6,13 @@ import { useAuthStore } from '../../stores/auth'
 import { useRouter } from 'vue-router'
 import { getActiveAnnouncements } from '../../services/announcement'
 import { useReservationStore } from '../../stores/reservation'
+import { useRoomStore } from '../../stores/room'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const reservationStore = useReservationStore()
+
+const roomStore = useRoomStore()
 
 // 待签到预约
 const pendingCheckinReservations = ref([])
@@ -50,10 +53,26 @@ const fetchPendingCheckinReservations = async () => {
   loadingReservations.value = true
   try {
     await reservationStore.fetchReservations()
+    await roomStore.fetchRooms()
+    
+    // 获取所有座位信息
+    const allSeats = []
+    for (const room of roomStore.rooms) {
+      await roomStore.fetchSeats(room.id)
+      allSeats.push(...roomStore.seats)
+    }
+    
     pendingCheckinReservations.value = reservationStore.reservations.filter(res => 
       res.userId === authStore.userInfo?.id && 
       res.reservationStatus === '已预约'
-    )
+    ).map(res => {
+      // 查找对应的座位信息
+      const seat = allSeats.find(s => s.id === parseInt(res.seatId))
+      if (seat) {
+        res.roomId = seat.roomId
+      }
+      return res
+    })
   } catch (error) {
     ElMessage.error('获取待签到预约失败')
   } finally {
@@ -100,6 +119,13 @@ const toggleAnnouncement = (announcementId) => {
   } else {
     expandedAnnouncementId.value = announcementId
   }
+}
+
+// 根据roomId获取自习室名称
+const getRoomName = (roomId) => {
+  const room = roomStore.rooms.find(r => r.id === parseInt(roomId))
+  console.log("room = " + roomId)
+  return room?.name || `自习室 ${roomId}`
 }
 
 // 模拟获取用户信息
@@ -219,7 +245,7 @@ onUnmounted(() => {
       <div class="checkin-list" v-loading="loadingReservations">
         <div v-for="reservation in pendingCheckinReservations" :key="reservation.id" class="checkin-item">
           <div class="checkin-info">
-            <div class="checkin-room">自习室 {{ reservation.roomId }}</div>
+            <div class="checkin-room">{{ getRoomName(reservation.roomId) }}</div>
             <div class="checkin-time">预约时间：{{ reservation.reservationInTime }} - {{ reservation.reservationOutTime }}</div>
           </div>
           <div class="checkin-actions">

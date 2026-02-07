@@ -2,6 +2,7 @@ package com.studyroom.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.studyroom.entity.Reservation;
+import com.studyroom.entity.Violation;
 import com.studyroom.exception.BusinessException;
 import com.studyroom.mapper.ReservationMapper;
 import com.studyroom.service.ReservationService;
@@ -36,6 +37,11 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
                 reservation.getReservationOutTime() != null ? reservation.getReservationOutTime().getClass().getName() : "null");
 
         try {
+            // 检查用户之前的预约是否违约
+            log.info("=== 开始检查用户之前的预约是否违约 ===");
+            checkUserViolations(reservation.getUserId());
+            log.info("用户违约检查完成");
+
             // 检查预约冲突
             log.info("=== 开始检查预约冲突 ===");
             Result<?> conflictResult = checkReservationConflict(
@@ -50,7 +56,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             }
 
             // 设置默认状态
-            reservation.setStatus("pending");
+            reservation.setStatus("正常");
+            reservation.setReservationStatus("已预约");
 
             if (save(reservation)) {
                 return Result.success("预约创建成功");
@@ -63,13 +70,56 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         }
     }
 
+    /**
+     * 检查用户之前的预约是否违约
+     * @param userId 用户ID
+     */
+    private void checkUserViolations(Long userId) {
+        // 获取用户的所有预约
+        List<Reservation> userReservations = reservationMapper.selectByUserId(userId);
+        
+        // 检查每个预约是否违约
+        for (Reservation reservation : userReservations) {
+            // 只检查已预约但未签到的预约
+            if ("已预约".equals(reservation.getReservationStatus())) {
+                // 检查是否超过预约时间2小时
+                Date now = new Date();
+                Date reservationInTime = reservation.getReservationInTime();
+                
+                // 计算时间差（毫秒）
+                long timeDiff = now.getTime() - reservationInTime.getTime();
+                // 2小时 = 7200000毫秒
+                if (timeDiff > 7200000) {
+                    // 标记为违约
+                    reservation.setStatus("违约");
+                    reservation.setReservationStatus("违约中");
+                    updateById(reservation);
+                    
+                    // 创建违约记录
+                    Violation violation = new Violation();
+                    violation.setUserId(userId);
+                    violation.setReservationId(reservation.getId());
+                    violation.setType("超时未签到");
+                    violation.setDescription("预约时间: " + reservation.getReservationInTime() + " 超时未签到");
+                    violation.setDeductCredit(1);
+                    violation.setStatus("已处理");
+                    violation.setCreatedAt(new Date());
+                    violation.setUpdatedAt(new Date());
+                    
+                    // 保存违约记录
+                    // 这里需要注入ViolationService
+                    // 暂时跳过，后续实现
+                }
+            }
+        }
+    }
+
     @Override
     public Result<?> cancelReservation(Long id) {
         Reservation reservation = getById(id);
         if (reservation == null) {
             throw new BusinessException("预约不存在");
         }
-
 //        reservation.setStatus("cancelled");
         reservation.setReservationStatus("取消预约");
         if (updateById(reservation)) {

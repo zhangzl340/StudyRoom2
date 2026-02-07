@@ -118,46 +118,6 @@ const pagination = reactive({
 
 // 自习室数据
 const rooms = ref([
-  {
-    id: 1,
-    name: '静思自习室',
-    building: '第一教学楼',
-    floor: 3,
-    totalSeats: 30,
-    availableSeats: 15,
-    status: 'available',
-    image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=quiet%20study%20room%20with%20wooden%20desks%20and%20good%20lighting&image_size=landscape_4_3'
-  },
-  {
-    id: 2,
-    name: '致远阅览室',
-    building: '图书馆',
-    floor: 2,
-    totalSeats: 45,
-    availableSeats: 20,
-    status: 'available',
-    image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20reading%20room%20with%20large%20windows&image_size=landscape_4_3'
-  },
-  {
-    id: 3,
-    name: '勤学自习室',
-    building: '第二教学楼',
-    floor: 4,
-    totalSeats: 25,
-    availableSeats: 5,
-    status: 'available',
-    image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=study%20room%20with%20individual%20study%20cubicles&image_size=landscape_4_3'
-  },
-  {
-    id: 4,
-    name: '创新自习室',
-    building: '实验楼',
-    floor: 1,
-    totalSeats: 20,
-    availableSeats: 0,
-    status: 'unavailable',
-    image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20study%20room%20with%20group%20study%20areas&image_size=landscape_4_3'
-  }
 ])
 
 // 计算属性

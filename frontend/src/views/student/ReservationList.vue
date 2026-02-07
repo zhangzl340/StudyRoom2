@@ -117,21 +117,19 @@ const selectRoom = async (room) => {
     await roomStore.fetchSeats(room.id)
     seatList.value = roomStore.seats
     
-    // // 检查当前用户是否已有预约
-    // await reservationStore.getReservations()
-    // const userReservations = reservationStore.reservations.filter(res => 
-    //   res.userId === authStore.userInfo?.id && 
-    //   (res.reservationStatus === '已预约' || res.reservationStatus === '使用中')
-    // )
-    
-    // if (userReservations.length > 0) {
-    //   selectedSeat.value = userReservations[0].seatId
-    // }
   } catch (error) {
     ElMessage.error('获取座位信息失败')
   } finally {
     loading2.value = false
   }
+}
+
+// 获取座位的预约信息
+const getSeatReservation = (seatId) => {
+  return reservationStore.reservations.find(res => 
+    res.seatId === seatId && 
+    (res.reservationStatus === '已预约' || res.reservationStatus === '使用中')
+  )
 }
 
 // 根据自习室布局生成座位网格
@@ -164,6 +162,14 @@ const seatGrid = computed(() => {
     // 座位编号 = (行号 - 1) × 列数 + 列号
     const index = (seat.rowNum - 1) * cols + seat.colNum - 1
     if (index >= 0 && index < grid.length) {
+      // 检查座位是否已被预约
+      const reservation = getSeatReservation(seat.id)
+      if (reservation) {
+        // 标记为已预约
+        seat.status = 'reserved'
+        // 添加预约信息
+        seat.reservation = reservation
+      }
       grid[index] = seat
     }
   })
@@ -268,7 +274,7 @@ const selectSeat = (seat) => {
       reservationData.value = {
         userId: authStore.userInfo?.id,
         seatId: seat.id,
-        status: '正常',
+        status: 'pending',
         reservationStatus: '已预约',
         reservationInTime: timeRange.value[0],
         reservationOutTime: timeRange.value[1],
@@ -294,7 +300,7 @@ const selectSeat = (seat) => {
       reservationData.value = {
         userId: authStore.userInfo?.id,
         seatId: seat.id,
-        status: '正常',
+        status: 'pending',
         reservationStatus: '已预约',
         reservationInTime: formatDate(nowIn),
         reservationOutTime: formatDate(nowOut),
@@ -492,15 +498,30 @@ initData()
         <!-- 座位地图 -->
         <div class="seat-map-container" v-loading="loading2">
           <div class="seat-map" :style="gridStyle">
-            <div v-for="seat in seatGrid" :key="seat.id" class="seat" :class="getSeatClass(seat)" :style="seatSize"
-              @click="selectSeat(seat)">
+            <div 
+              v-for="seat in seatGrid" 
+              :key="seat.id" 
+              class="seat" 
+              :class="getSeatClass(seat)" 
+              :style="seatSize"
+              @click="selectSeat(seat)"
+            >
               {{ seat.seatNumber }}
               <span v-if="seat.id === selectedSeat">已选择</span>
-              <!-- <span v-else-if="seat.status === 'available'">空闲</span>
-              <span v-else-if="seat.status === 'fault'">故障</span>
               <span v-else-if="seat.status === 'reserved'">已预约</span>
-              <span v-else-if="seat.status === 'occupied'">使用中</span> -->
+              <span v-else-if="seat.status === 'occupied'">使用中</span>
+              <span v-else-if="seat.status === 'fault'">故障</span>
+              <span v-else-if="seat.status === 'available'">空闲</span>
               <span v-else>{{ seat.seatNum }}</span>
+              
+              <!-- 悬停信息 -->
+              <div class="seat-tooltip" v-if="seat.status === 'reserved' && seat.reservation">
+                <div class="tooltip-content">
+                  <p class="tooltip-title">预约信息</p>
+                  <p>开始时间：{{ seat.reservation.reservationInTime }}</p>
+                  <p>结束时间：{{ seat.reservation.reservationOutTime }}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -737,6 +758,63 @@ initData()
         background: #67C23A99;
         color: #FFFFFF;
         border: 2px solid #67C23A;
+      }
+
+      /* 悬停信息样式 */
+      .seat {
+        position: relative;
+      }
+
+      .seat-tooltip {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        z-index: 1000;
+        white-space: normal;
+        width: 200px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      }
+
+      .seat:hover .seat-tooltip {
+        opacity: 1;
+        visibility: visible;
+        top: -5px;
+      }
+
+      .seat-tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px 5px 0;
+        border-style: solid;
+        border-color: rgba(0, 0, 0, 0.8) transparent transparent;
+      }
+
+      .tooltip-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .tooltip-title {
+        font-weight: bold;
+        margin: 0;
+      }
+
+      .tooltip-content p {
+        margin: 0;
+        font-size: 11px;
       }
     }
   }

@@ -168,23 +168,7 @@ const roomInfo = reactive({
 })
 
 // 座位数据
-const seats = ref([
-  { id: 1, seatNumber: 'A1', status: 'available' },
-  { id: 2, seatNumber: 'A2', status: 'available' },
-  { id: 3, seatNumber: 'A3', status: 'available' },
-  { id: 4, seatNumber: 'A4', status: 'available' },
-  { id: 5, seatNumber: 'A5', status: 'available' },
-  { id: 6, seatNumber: 'B1', status: 'reserved' },
-  { id: 7, seatNumber: 'B2', status: 'available' },
-  { id: 8, seatNumber: 'B3', status: 'available' },
-  { id: 9, seatNumber: 'B4', status: 'reserved' },
-  { id: 10, seatNumber: 'B5', status: 'available' },
-  { id: 11, seatNumber: 'C1', status: 'available' },
-  { id: 12, seatNumber: 'C2', status: 'occupied' },
-  { id: 13, seatNumber: 'C3', status: 'available' },
-  { id: 14, seatNumber: 'C4', status: 'available' },
-  { id: 15, seatNumber: 'C5', status: 'available' }
-])
+const seats = ref([])
 
 // 预约表单
 const reservationForm = reactive({
@@ -217,9 +201,7 @@ const submitReservation = async () => {
     errorMessage.value = '请选择预约时间'
     return
   }
-  
-  // 这里应该调用预约API
-  // 暂时模拟成功
+
   successMessage.value = '预约成功'
   
   // 更新座位状态
