@@ -33,4 +33,6 @@ public interface UserService extends IService<User> {
     User findByEmail(String email);
 
     User findByPhone(String phone);
+    
+    java.util.List<java.util.Map<String, Object>> getUserCollegeDistribution();
 }

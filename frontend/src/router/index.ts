@@ -161,6 +161,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '轮播图管理'
         }
+      },
+      {
+        path: 'colleges',
+        name: 'AdminColleges',
+        component: () => import('../views/admin/CollegeList.vue'),
+        meta: {
+          title: '学院管理'
+        }
       }
     ]
   }

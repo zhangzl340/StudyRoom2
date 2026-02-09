@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .requestMatchers("/reservation/**").permitAll()
                 .requestMatchers("/checkin/**").permitAll()
                 .requestMatchers("/carousel/**").permitAll()
+                .requestMatchers("/dashboard/**").permitAll()
+                .requestMatchers("/college/**").permitAll()
 
                     // 运行访问静态资源
                 .requestMatchers("/upload/**","/static/**","/images/**").permitAll()

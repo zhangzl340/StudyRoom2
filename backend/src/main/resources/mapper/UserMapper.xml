@@ -13,6 +13,7 @@
         <result property="role" column="role" />
         <result property="status" column="status" />
         <result property="creditScore" column="credit_score" />
+        <result property="collegeId" column="college_id" />
         <result property="createdAt" column="created_at" />
         <result property="updatedAt" column="updated_at" />
     </resultMap>
@@ -30,6 +31,23 @@
     <!-- 根据手机号查询用户 -->
     <select id="selectByPhone" resultMap="BaseResultMap">
         SELECT * FROM users WHERE phone = #{phone}
+    </select>
+
+    <!-- 查询用户学院分布 -->
+    <select id="selectUserCollegeDistribution" resultType="java.util.Map">
+        SELECT
+            c.name AS name,
+            COUNT(u.id) AS value
+        FROM
+            users u
+        LEFT JOIN
+            college c ON u.college_id = c.id
+        WHERE
+            u.college_id IS NOT NULL
+        GROUP BY
+            c.id, c.name
+        ORDER BY
+            value DESC
     </select>
 
 </mapper>

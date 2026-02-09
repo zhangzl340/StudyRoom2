@@ -21,4 +21,12 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     List<Reservation> selectUpcomingByUserId(Long userId);
 
     List<Reservation> selectTodayByUserId(Long userId);
+    
+    int countTodayReservations();
+    
+    int countYesterdayReservations();
+    
+    int countNoShowReservations();
+    
+    int countTotalReservations();
 }

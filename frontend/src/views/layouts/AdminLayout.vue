@@ -15,7 +15,8 @@ import {
   SwitchButton,
   Expand,
   Fold,
-  Picture
+  Picture,
+  School
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -74,11 +75,17 @@ const sidebarItems = [
     icon: Bell,
     path: '/admin/announcements'
   },
-  {    
+  {
     name: 'carousel',
     label: '轮播图管理',
     icon: Picture,
     path: '/admin/carousels'
+  },
+  {
+    name: 'college',
+    label: '学院管理',
+    icon: School,
+    path: '/admin/colleges'
   }
 ]
 

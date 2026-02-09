@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.studyroom.mapper.CollegeMapper">
+
+    <resultMap id="BaseResultMap" type="com.studyroom.entity.College">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="color" property="color" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, color, created_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM college
+        ORDER BY id ASC
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM college
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.studyroom.entity.College">
+        INSERT INTO college (name, color, created_at, updated_at)
+        VALUES (#{name}, #{color}, NOW(), NOW())
+    </insert>
+
+    <update id="update" parameterType="com.studyroom.entity.College">
+        UPDATE college
+        SET
+        name = #{name},
+        color = #{color},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM college
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

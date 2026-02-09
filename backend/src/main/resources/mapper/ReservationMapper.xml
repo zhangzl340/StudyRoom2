@@ -67,4 +67,27 @@
         ORDER BY reservation_in_time ASC
     </select>
 
+    <!-- 统计今天的预约数 -->
+    <select id="countTodayReservations" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM reservations
+        WHERE DATE(reservation_in_time) = CURDATE()
+    </select>
+
+    <!-- 统计昨天的预约数 -->
+    <select id="countYesterdayReservations" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM reservations
+        WHERE DATE(reservation_in_time) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+    </select>
+
+    <!-- 统计爽约次数 -->
+    <select id="countNoShowReservations" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM reservations
+        WHERE status = 'no_show' OR reservation_status = '违约'
+    </select>
+
+    <!-- 统计总预约次数 -->
+    <select id="countTotalReservations" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM reservations
+    </select>
+
 </mapper>

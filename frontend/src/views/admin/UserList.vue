@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue'
-import { ElMessage, ElMessageBox, roleTypes } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus, Edit, Delete, Refresh, Download, Upload, User } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
+import axios from 'axios'
 
 const userStore = useUserStore()
 
@@ -49,7 +50,8 @@ const form = ref({
   phone: '',
   gender: '',
   status: 'active',
-  role:'student'
+  role:'student',
+  collegeId: ''
 })
 
 // 表单验证规则
@@ -70,6 +72,18 @@ const rules = {
   ],
   role:[
     { required: true, message: '请选择角色', trigger: 'blur' }
+  ],
+  collegeId: [
+    {
+      validator: (rule, value, callback) => {
+        if (form.value.role === 'student' && !value) {
+          callback(new Error('学生必须选择学院'))
+        } else {
+          callback()
+        }
+      },
+      trigger: ['blur', 'change']
+    }
   ]
 }
 
@@ -79,6 +93,24 @@ const roleOptions= [
   {value:'admin',label:'管理员'},
   {value:'system_admin',label:'系统管理员'}
 ]
+
+// 学院选项
+const collegeOptions = ref([])
+
+// 加载学院列表
+const loadColleges = async () => {
+  try {
+    const response = await axios.get('/api/college/list')
+    if (response.data.success) {
+      collegeOptions.value = response.data.data.map(college => ({
+        value: college.id,
+        label: college.name
+      }))
+    }
+  } catch (error) {
+    console.error('获取学院列表失败:', error)
+  }
+}
 
 // 表单引用
 const formRef = ref(null)
@@ -156,7 +188,8 @@ const openAddDialog = () => {
     phone: '',
     gender: '',
     status: 'active',
-    role:'student' // 默认角色
+    role:'student', // 默认角色
+    collegeId: ''
   }
   dialogVisible.value = true
   
@@ -180,7 +213,8 @@ const openEditDialog = (user) => {
     phone: user.phone || '',
     gender: user.gender || '',
     status: user.status || 'active',
-    role:user.role || 'student'   //角色字段
+    role: user.role || 'student',   //角色字段
+    collegeId: user.college_id || user.collegeId || '' // 学院id字段
   }
   dialogVisible.value = true
   
@@ -207,7 +241,8 @@ const submitForm = async () => {
       phone: form.value.phone,
       gender: form.value.gender,
       status: form.value.status,
-      role: form.value.role
+      role: form.value.role,
+      collegeId: form.value.collegeId
     }
     
     // 如果是添加用户，需要密码；编辑用户不需要密码
@@ -283,6 +318,7 @@ const refreshList = () => {
 
 // 初始化
 onMounted(async () => {
+  await loadColleges()
   await getUsers()
 })
 
@@ -531,6 +567,21 @@ const formatDateTime = (dateTime) => {
                 <el-radio label="active">启用</el-radio>
                 <el-radio label="inactive">禁用</el-radio>
               </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="学院" prop="collegeId">
+              <el-select v-model="form.collegeId" placeholder="请选择学院" style="width: 100%" :disabled="form.role !== 'student'">
+                <el-option 
+                  v-for="option in collegeOptions" 
+                  :key="option.value" 
+                  :label="option.label" 
+                  :value="option.value" 
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>

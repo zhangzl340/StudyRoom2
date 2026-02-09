@@ -34,6 +34,8 @@ public class User implements Serializable {
 
     private Integer creditScore;
 
+    private Long collegeId;
+
     @TableField(fill = FieldFill.INSERT)
     private Date createdAt;
 

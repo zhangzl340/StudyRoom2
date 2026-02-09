@@ -225,4 +225,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public User findByPhone(String phone) {
         return userMapper.selectByPhone(phone);
     }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getUserCollegeDistribution() {
+        try {
+            log.info("=== 查询用户学院分布 ===");
+            return userMapper.selectUserCollegeDistribution();
+        } catch (Exception e) {
+            log.error("查询用户学院分布失败", e);
+            return new java.util.ArrayList<>();
+        }
+    }
 }

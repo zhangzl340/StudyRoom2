@@ -10,4 +10,6 @@ public interface UserMapper extends BaseMapper<User> {
     User selectByEmail(String email);
 
     User selectByPhone(String phone);
+    
+    java.util.List<java.util.Map<String, Object>> selectUserCollegeDistribution();
 }
