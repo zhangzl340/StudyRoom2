@@ -130,6 +130,16 @@ CREATE TABLE IF NOT EXISTS system_logs (
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统日志表';
 
+CREATE TABLE IF NOT EXISTS carousels (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL COMMENT '轮播图名称',
+  path VARCHAR(500) NOT NULL COMMENT '轮播图路径',
+  status VARCHAR(20) NOT NULL COMMENT '状态：active, inactive',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='轮播图表';
+
 INSERT INTO system_settings (`key`, value, description) VALUES
 ('reservation.max_days', '7', '最大预约天数'),
 ('reservation.max_hours_per_day', '8', '每天最大预约小时数'),

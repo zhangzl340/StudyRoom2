@@ -2,9 +2,11 @@ package com.studyroom.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.studyroom.entity.CheckIn;
+import com.studyroom.entity.Reservation;
 import com.studyroom.entity.Violation;
 import com.studyroom.exception.BusinessException;
 import com.studyroom.mapper.CheckInMapper;
+import com.studyroom.mapper.ReservationMapper;
 import com.studyroom.mapper.ViolationMapper;
 import com.studyroom.service.CheckInService;
 import com.studyroom.utils.Result;
@@ -26,6 +28,9 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
     @Autowired
     private ViolationMapper violationMapper;
 
+    @Autowired
+    private ReservationMapper reservationMapper;
+
     @Override
     public Result<?> checkIn(Long reservationId, Long userId, String method) {
         // 检查是否已经有签到记录
@@ -33,6 +38,15 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
         if (existingCheckIn != null) {
             throw new BusinessException("该预约已经签到");
         }
+
+        // 更新预约表状态为使用中
+        Reservation reservation = reservationMapper.selectById(reservationId);
+        if (reservation == null) {
+            throw new BusinessException("预约不存在");
+        }
+        reservation.setReservationStatus("使用中");
+        reservation.setSignInTime(new Date());
+        reservationMapper.updateById(reservation);
 
         CheckIn checkIn = new CheckIn();
         checkIn.setReservationId(reservationId);
@@ -53,6 +67,15 @@ public class CheckInServiceImpl extends ServiceImpl<CheckInMapper, CheckIn> impl
         CheckIn checkIn = getById(id);
         if (checkIn == null) {
             throw new BusinessException("签到记录不存在");
+        }
+
+        // 更新预约表状态为完成预约
+        Long reservationId = checkIn.getReservationId();
+        Reservation reservation = reservationMapper.selectById(reservationId);
+        if (reservation != null) {
+            reservation.setReservationStatus("完成预约");
+            reservation.setSignOutTime(new Date());
+            reservationMapper.updateById(reservation);
         }
 
         checkIn.setCheckOutTime(new Date());

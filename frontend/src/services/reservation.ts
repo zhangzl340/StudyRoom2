@@ -71,21 +71,45 @@ export async function calculateReservationFee(reservationId: number) {
 // 签到
 export async function signInReservation(reservationId: number) {
   return service({
-    url: '/reservation/signin',
+    url: '/checkin/in',
     method: 'post',
     params: {
-      id: reservationId
+      reservationId: reservationId,
+      userId: localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId')!) : null,
+      method: 'manual'
     }
   })
 }
 
 // 签退
-export async function signOutReservation(reservationId: number) {
+export async function signOutReservation(checkinId: number) {
   return service({
-    url: '/reservation/signout',
+    url: '/checkin/out',
     method: 'post',
     params: {
-      id: reservationId
+      id: checkinId
+    }
+  })
+}
+
+// 暂离
+export async function leaveReservation(checkinId: number) {
+  return service({
+    url: '/checkin/leave',
+    method: 'post',
+    params: {
+      id: checkinId
+    }
+  })
+}
+
+// 暂离返回
+export async function returnFromLeaveReservation(checkinId: number) {
+  return service({
+    url: '/checkin/return',
+    method: 'post',
+    params: {
+      id: checkinId
     }
   })
 }

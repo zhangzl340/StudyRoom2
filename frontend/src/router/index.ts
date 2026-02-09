@@ -153,6 +153,14 @@ const routes: RouteRecordRaw[] = [
         meta: {
           title: '公告管理'
         }
+      },
+      {
+        path: 'carousels',
+        name: 'AdminCarousels',
+        component: () => import('../views/admin/CarouselList.vue'),
+        meta: {
+          title: '轮播图管理'
+        }
       }
     ]
   }

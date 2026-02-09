@@ -31,10 +31,12 @@ export const useRoomStore = defineStore('room', () => {
       const response = await getRoomList(params) as unknown as ApiResponse
       if (response.code === 200) {
         rooms.value = response.data
+        console.log('获取到的自习室列表:', rooms.value)
       }
       return response
     } catch (err: any) {
       error.value = err.message || '获取自习室列表失败'
+      console.error('获取自习室列表时发生错误:', err)
       return { code: 500, message: error.value }
     } finally {
       loading.value = false

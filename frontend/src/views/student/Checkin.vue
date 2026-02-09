@@ -6,7 +6,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useReservationStore } from '../../stores/reservation'
 import { useRoomStore } from '../../stores/room'
-import { signInReservation, signOutReservation } from '../../services/reservation'
+import { signInReservation, signOutReservation, leaveReservation, returnFromLeaveReservation } from '../../services/reservation'
+import service from '../../services/axios'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +26,7 @@ const reservationId = ref(route.query.reservationId || null)
 // 座位信息
 const seatInfo = ref(null)
 const roomInfo = ref(null)
+const checkInInfo = ref(null)
 
 // 获取预约详情
 const fetchReservationDetail = async () => {
@@ -46,28 +48,40 @@ const fetchReservationDetail = async () => {
       // 获取所有自习室和座位信息
       await roomStore.getRooms()
       
+      // 存储所有座位信息的临时数组
+      const allSeats = []
+      
       // 遍历所有自习室，获取座位信息
-      let foundRoom = null
       for (const room of roomStore.rooms) {
         try {
           await roomStore.fetchSeats(room.id)
-          const seat = roomStore.seats.find(s => s.id === parseInt(reservation.seatId))
-          if (seat) {
-            foundRoom = room
-            reservation.roomId = room.id
-            break
-          }
+          // 将当前房间的座位信息添加到临时数组
+          allSeats.push(...roomStore.seats.map(seat => ({
+            ...seat,
+            roomId: room.id
+          })))
         } catch (error) {
           console.error(`获取自习室 ${room.id} 的座位信息失败:`, error)
         }
       }
       
-      if (foundRoom) {
-        roomInfo.value = foundRoom
+      // 查找对应的座位信息
+      const seat = allSeats.find(s => s.id === parseInt(reservation.seatId))
+      if (seat) {
+        // 查找对应的自习室信息
+        const foundRoom = roomStore.rooms.find(r => r.id === parseInt(seat.roomId))
+        if (foundRoom) {
+          roomInfo.value = foundRoom
+          reservation.roomId = foundRoom.id
+        }
       }
+      
+      // 获取签到记录信息
+      await fetchCheckInInfo(reservation.id)
       
       console.log('预约信息:', reservation)
       console.log('自习室信息:', roomInfo.value)
+      console.log('签到记录信息:', checkInInfo.value)
     } else {
       ElMessage.error('预约信息不存在')
       router.push('/student')
@@ -93,6 +107,7 @@ const handleSignIn = async () => {
       reservationInfo.value.signInTime = new Date().toISOString().replace('T', ' ').split('.')[0]
       // 刷新预约列表
       await reservationStore.fetchReservations()
+      await fetchCheckInInfo(reservationInfo.value.id)
     } else {
       ElMessage.error('签到失败：' + response.message)
     }
@@ -109,7 +124,13 @@ const handleSignOut = async () => {
   
   loading2.value = true
   try {
-    const response = await signOutReservation(reservationInfo.value.id)
+    // 获取签到id
+    if (!checkInInfo.value) {
+      ElMessage.error('未找到签到记录')
+      return
+    }
+    
+    const response = await signOutReservation(checkInInfo.value.id)
     if (response.code === 200) {
       ElMessage.success('签退成功')
       // 更新预约状态
@@ -117,11 +138,73 @@ const handleSignOut = async () => {
       reservationInfo.value.signOutTime = new Date().toISOString().replace('T', ' ').split('.')[0]
       // 刷新预约列表
       await reservationStore.fetchReservations()
+      // 重新获取签到信息
+      await fetchCheckInInfo(reservationInfo.value.id)
     } else {
       ElMessage.error('签退失败：' + response.message)
     }
   } catch (error) {
     ElMessage.error('签退失败：' + error.message)
+  } finally {
+    loading2.value = false
+  }
+}
+
+// 暂离
+const handleLeave = async () => {
+  if (!reservationInfo.value) return
+  
+  loading2.value = true
+  try {
+    // 获取签到id
+    if (!checkInInfo.value) {
+      ElMessage.error('未找到签到记录')
+      return
+    }
+    
+    const response = await leaveReservation(checkInInfo.value.id)
+    
+    if (response.code === 200) {
+      ElMessage.success('暂离成功')
+      // 更新签到状态
+      checkInInfo.value.status = 'left'
+      // 重新获取签到信息，确保状态更新
+      await fetchCheckInInfo(reservationInfo.value.id)
+    } else {
+      ElMessage.error('暂离失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('暂离失败：' + error.message)
+  } finally {
+    loading2.value = false
+  }
+}
+
+// 暂离返回
+const handleReturn = async () => {
+  if (!reservationInfo.value) return
+  
+  loading2.value = true
+  try {
+    // 获取签到id
+    if (!checkInInfo.value) {
+      ElMessage.error('未找到签到记录')
+      return
+    }
+    
+    const response = await returnFromLeaveReservation(checkInInfo.value.id)
+    
+    if (response.code === 200) {
+      ElMessage.success('返回成功')
+      // 更新签到状态
+      checkInInfo.value.status = 'returned'
+      // 重新获取签到信息，确保状态更新
+      await fetchCheckInInfo(reservationInfo.value.id)
+    } else {
+      ElMessage.error('返回失败：' + response.message)
+    }
+  } catch (error) {
+    ElMessage.error('返回失败：' + error.message)
   } finally {
     loading2.value = false
   }
@@ -137,6 +220,30 @@ const handleCancelReservation = async () => {
     router.push('/student')
   } catch (error) {
     ElMessage.error('取消预约失败')
+  }
+}
+
+// 获取签到记录
+const fetchCheckInInfo = async (reservationId) => {
+  try {
+    const response = await service({
+      url: '/checkin/list',
+      method: 'get',
+      params: {
+        userId: authStore.userInfo?.id
+      }
+    })
+    
+    if (response.code === 200) {
+      const checkIns = response.data
+      const checkIn = checkIns.find(ci => ci.reservationId === parseInt(reservationId))
+      if (checkIn) {
+        checkInInfo.value = checkIn
+        console.log('签到记录信息:', checkInInfo.value)
+      }
+    }
+  } catch (error) {
+    console.error('获取签到记录失败:', error)
   }
 }
 
@@ -215,14 +322,19 @@ onMounted(async () => {
                 </el-button>
               </div>
               
-              <!-- 使用中状态 -->
+                <!-- 使用中状态和暂离状态 -->
               <div v-else-if="reservationInfo.reservationStatus === '使用中'" class="buttons-group">
+                <el-button v-if="!checkInInfo || checkInInfo.status !== 'left'" type="info" size="large" @click="handleLeave">
+                  暂离
+                </el-button>
+                <el-button v-else type="primary" size="large" @click="handleReturn">
+                  返回
+                </el-button>
                 <el-button type="warning" size="large" @click="handleSignOut">
                   <el-icon><Close /></el-icon>
                   立即签退
                 </el-button>
               </div>
-              
               <!-- 其他状态 -->
               <div v-else class="status-message">
                 <p class="message">{{ 
@@ -231,7 +343,7 @@ onMounted(async () => {
                   reservationInfo.reservationStatus === '违约中' ? '预约已违约' :
                   '预约状态异常'
                 }}</p>
-                <el-button type="primary" size="large" @click="router.push('/student')">
+                <el-button type="primary" size="large" @click="router.push('/student/dashboard')">
                   返回首页
                 </el-button>
               </div>

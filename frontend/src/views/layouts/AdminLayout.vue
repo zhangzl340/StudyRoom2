@@ -14,7 +14,8 @@ import {
   ArrowLeft,
   SwitchButton,
   Expand,
-  Fold
+  Fold,
+  Picture
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -67,11 +68,17 @@ const sidebarItems = [
     icon: User,
     path: '/admin/users'
   },
-  {
+  {    
     name: 'announcement',
     label: '公告管理',
     icon: Bell,
     path: '/admin/announcements'
+  },
+  {    
+    name: 'carousel',
+    label: '轮播图管理',
+    icon: Picture,
+    path: '/admin/carousels'
   }
 ]
 

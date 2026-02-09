@@ -147,6 +147,8 @@ export const useReservationStore = defineStore('reservation', () => {
     loading.value = true
     error.value = null
     try {
+      // 注意：这里需要获取checkinId，而不是直接使用reservationId
+      // 暂时使用reservationId作为checkinId，需要后端支持
       const response = await signOutReservation(reservationId) as unknown as ApiResponse
       if (response.code === 200) {
         // 更新预约状态

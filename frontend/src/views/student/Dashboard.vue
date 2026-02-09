@@ -7,15 +7,17 @@ import { useRouter } from 'vue-router'
 import { getActiveAnnouncements } from '../../services/announcement'
 import { useReservationStore } from '../../stores/reservation'
 import { useRoomStore } from '../../stores/room'
+import service from '../../services/axios'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const reservationStore = useReservationStore()
-
 const roomStore = useRoomStore()
 
 // 待签到预约
 const pendingCheckinReservations = ref([])
+const usingReservations = ref([])
+const checkInList = ref([])
 const loadingReservations = ref(false)
 
 // 违约情况
@@ -33,6 +35,30 @@ const announcements = ref([])
 const loading = ref(false)
 const expandedAnnouncementId = ref(null) // 当前展开的公告ID
 
+// 轮播图
+const carousels = ref([])
+const loadingCarousels = ref(false)
+
+// 获取完整图片URL的方法
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return ''
+  // 如果已经是完整的URL，直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath
+  }
+  
+  // 如果是以 / 开头，表示是绝对路径
+  if (imagePath.startsWith('/')) {
+    // 根据后端地址拼接完整URL，包含/api前缀
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const fullUrl = `${baseURL}/api${imagePath}`
+    return fullUrl
+  }
+  
+  // 其他情况直接返回
+  return imagePath
+}
+
 // 获取活跃的公告
 const fetchActiveAnnouncements = async () => {
   loading.value = true
@@ -48,12 +74,46 @@ const fetchActiveAnnouncements = async () => {
   }
 }
 
-// 获取待签到的预约
+// 获取活跃的轮播图
+const fetchActiveCarousels = async () => {
+  loadingCarousels.value = true
+  try {
+    const response = await service({
+      url: '/carousel/active',
+      method: 'get'
+    })
+    if (response.code === 200) {
+      carousels.value = response.data
+    }
+  } catch (error) {
+    console.error('获取轮播图失败:', error)
+  } finally {
+    loadingCarousels.value = false
+  }
+}
+
+// 获取待签到和使用中的预约
 const fetchPendingCheckinReservations = async () => {
   loadingReservations.value = true
   try {
     await reservationStore.fetchReservations()
     await roomStore.fetchRooms()
+    
+    // 获取签到记录列表
+    try {
+      const checkInResponse = await service({
+        url: '/checkin/list',
+        method: 'get',
+        params: {
+          userId: authStore.userInfo?.id
+        }
+      })
+      if (checkInResponse.code === 200) {
+        checkInList.value = checkInResponse.data
+      }
+    } catch (error) {
+      console.error('获取签到记录失败:', error)
+    }
     
     // 获取所有座位信息
     const allSeats = []
@@ -62,6 +122,7 @@ const fetchPendingCheckinReservations = async () => {
       allSeats.push(...roomStore.seats)
     }
     
+    // 获取待签到的预约
     pendingCheckinReservations.value = reservationStore.reservations.filter(res => 
       res.userId === authStore.userInfo?.id && 
       res.reservationStatus === '已预约'
@@ -73,8 +134,21 @@ const fetchPendingCheckinReservations = async () => {
       }
       return res
     })
+    
+    // 获取使用中的预约
+    usingReservations.value = reservationStore.reservations.filter(res => 
+      res.userId === authStore.userInfo?.id && 
+      res.reservationStatus === '使用中'
+    ).map(res => {
+      // 查找对应的座位信息
+      const seat = allSeats.find(s => s.id === parseInt(res.seatId))
+      if (seat) {
+        res.roomId = seat.roomId
+      }
+      return res
+    })
   } catch (error) {
-    ElMessage.error('获取待签到预约失败')
+    ElMessage.error('获取预约信息失败')
   } finally {
     loadingReservations.value = false
   }
@@ -93,6 +167,132 @@ const cancelReservation = async (reservationId) => {
     await fetchPendingCheckinReservations()
   } catch (error) {
     ElMessage.error('取消预约失败')
+  }
+}
+
+// 暂离
+const handleLeave = async (reservationId) => {
+  try {
+    // 获取签到id
+    const response = await service({
+      url: '/checkin/list',
+      method: 'get',
+      params: {
+        userId: authStore.userInfo?.id
+      }
+    })
+    
+    if (response.code === 200) {
+      const checkIns = response.data
+      const checkIn = checkIns.find(ci => ci.reservationId === reservationId)
+      
+      if (checkIn) {
+        const leaveResponse = await service({
+          url: '/checkin/leave',
+          method: 'post',
+          params: {
+            id: checkIn.id
+          }
+        })
+        
+        if (leaveResponse.code === 200) {
+          ElMessage.success('暂离成功')
+          await fetchPendingCheckinReservations()
+        } else {
+          ElMessage.error('暂离失败：' + leaveResponse.message)
+        }
+      } else {
+        ElMessage.error('未找到签到记录')
+      }
+    } else {
+      ElMessage.error('获取签到记录失败')
+    }
+  } catch (error) {
+    ElMessage.error('暂离失败：' + error.message)
+  }
+}
+
+// 签退
+const handleSignOut = async (reservationId) => {
+  try {
+    // 获取签到id
+    const response = await service({
+      url: '/checkin/list',
+      method: 'get',
+      params: {
+        userId: authStore.userInfo?.id
+      }
+    })
+    
+    if (response.code === 200) {
+      const checkIns = response.data
+      const checkIn = checkIns.find(ci => ci.reservationId === reservationId)
+      
+      if (checkIn) {
+        const signOutResponse = await service({
+          url: '/checkin/out',
+          method: 'post',
+          params: {
+            id: checkIn.id
+          }
+        })
+        
+        if (signOutResponse.code === 200) {
+          ElMessage.success('签退成功')
+          await fetchPendingCheckinReservations()
+        } else {
+          ElMessage.error('签退失败：' + signOutResponse.message)
+        }
+      } else {
+        ElMessage.error('未找到签到记录')
+      }
+    } else {
+      ElMessage.error('获取签到记录失败')
+    }
+  } catch (error) {
+    ElMessage.error('签退失败：' + error.message)
+  }
+}
+
+// 暂离返回
+const handleReturn = async (reservationId) => {
+  try {
+    // 获取签到id
+    const response = await service({
+      url: '/checkin/list',
+      method: 'get',
+      params: {
+        userId: authStore.userInfo?.id
+      }
+    })
+    
+    if (response.code === 200) {
+      const checkIns = response.data
+      const checkIn = checkIns.find(ci => ci.reservationId === reservationId)
+      
+      if (checkIn) {
+        const returnResponse = await service({
+          url: '/checkin/return',
+          method: 'post',
+          params: {
+            id: checkIn.id
+          }
+        })
+        
+        if (returnResponse.code === 200) {
+          ElMessage.success('返回成功')
+          await fetchPendingCheckinReservations()
+        } else {
+          ElMessage.error('返回失败：' + returnResponse.message)
+        }
+      } else {
+        ElMessage.error('未找到签到记录')
+      }
+    } else {
+      ElMessage.error('获取签到记录失败')
+    }
+  } catch (error) {
+    ElMessage.error('返回失败：' + error.message)
   }
 }
 
@@ -128,6 +328,12 @@ const getRoomName = (roomId) => {
   return room?.name || `自习室 ${roomId}`
 }
 
+// 根据预约id获取签到状态
+const getCheckInStatus = (reservationId) => {
+  const checkIn = checkInList.value.find(ci => ci.reservationId === reservationId)
+  return checkIn?.status || null
+}
+
 // 模拟获取用户信息
 const getUserInfo = () => {
   // 这里可以调用后端API获取用户信息
@@ -136,13 +342,7 @@ const getUserInfo = () => {
   }
 }
 
-// 模拟获取预约状态
-const getReservationStatus = () => {
-  // 这里可以调用后端API获取预约状态
-  // 暂时使用模拟数据
-  defaultNumber.value = 0
-  defaultStatus.value = '正常'
-}
+
 
 // 计算并更新剩余时间
 const updateRemainingTime = () => {
@@ -170,7 +370,7 @@ const updateRemainingTime = () => {
 const cancelBan = () => {
   if (new Date() > new Date(endTime.value)) {
     // 这里可以调用后端API解除禁约
-    defaultStatus.value = '正常'
+    defaultStatus.value = 'pending'
     cancelBtn.value = false
     ElMessage.success('预约状态已恢复正常')
   }
@@ -180,8 +380,9 @@ const cancelBan = () => {
 let timer = null
 onMounted(() => {
   getUserInfo()
-  getReservationStatus()
+  // getReservationStatus()
   fetchActiveAnnouncements()
+  fetchActiveCarousels()
   fetchPendingCheckinReservations()
   timer = setInterval(() => { updateRemainingTime() }, 1000)
 })
@@ -222,16 +423,17 @@ onUnmounted(() => {
     </div>
     
     <!-- 轮播图 -->
-    <div class="carousel">
+    <div class="carousel" v-if="carousels.length > 0">
+      <el-carousel :interval="3000" type="card" height="180px">
+        <el-carousel-item v-for="carousel in carousels" :key="carousel.id">
+          <img :src="getFullImageUrl(carousel.path)" :alt="carousel.name" class="carousel-img">
+        </el-carousel-item>
+      </el-carousel>
+    </div>
+    <div class="carousel" v-else>
       <el-carousel :interval="3000" type="card" height="180px">
         <el-carousel-item>
           <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20study%20room%20with%20comfortable%20seats%20and%20good%20lighting&image_size=landscape_16_9" alt="自习室环境" class="carousel-img">
-        </el-carousel-item>
-        <el-carousel-item>
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=students%20studying%20in%20a%20modern%20library&image_size=landscape_16_9" alt="学习氛围" class="carousel-img">
-        </el-carousel-item>
-        <el-carousel-item>
-          <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=smart%20campus%20study%20room%20reservation%20system&image_size=landscape_16_9" alt="智能预约系统" class="carousel-img">
         </el-carousel-item>
       </el-carousel>
     </div>
@@ -256,6 +458,39 @@ onUnmounted(() => {
             <el-button type="danger" size="small" @click="cancelReservation(reservation.id)">
               <el-icon><Close /></el-icon>
               取消
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 使用中预约 -->
+    <div class="pending-checkin" v-if="usingReservations.length > 0">
+      <h3 class="section-title">
+        <el-icon><Clock /></el-icon>
+        使用中预约
+      </h3>
+      <div class="checkin-list" v-loading="loadingReservations">
+        <div v-for="reservation in usingReservations" :key="reservation.id" class="checkin-item">
+          <div class="checkin-info">
+            <div class="checkin-room">{{ getRoomName(reservation.roomId) }}</div>
+            <div class="checkin-time">使用时间：{{ reservation.signInTime || reservation.reservationInTime }} - {{ reservation.reservationOutTime }}</div>
+            <div class="checkin-status" v-if="getCheckInStatus(reservation.id) === 'left'">
+              <el-tag type="warning">暂离中</el-tag>
+            </div>
+          </div>
+          <div class="checkin-actions">
+            <el-button v-if="getCheckInStatus(reservation.id) !== 'left'" type="info" size="small" @click="handleLeave(reservation.id)">
+              暂离
+            </el-button>
+            <el-button v-else type="primary" size="small" @click="handleReturn(reservation.id)">
+              返回
+            </el-button>
+            <el-button type="warning" size="small" @click="handleSignOut(reservation.id)">
+              签退
+            </el-button>
+            <el-button type="primary" size="small" @click="goToCheckin(reservation.id)">
+              <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
         </div>

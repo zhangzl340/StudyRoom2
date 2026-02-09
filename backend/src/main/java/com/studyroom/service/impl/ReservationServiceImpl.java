@@ -56,7 +56,7 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             }
 
             // 设置默认状态
-            reservation.setStatus("正常");
+            reservation.setStatus("pending");
             reservation.setReservationStatus("已预约");
 
             if (save(reservation)) {
@@ -88,8 +88,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
                 
                 // 计算时间差（毫秒）
                 long timeDiff = now.getTime() - reservationInTime.getTime();
-                // 2小时 = 7200000毫秒
-                if (timeDiff > 7200000) {
+                // 5分钟 = 5 * 60 * 1000
+                if (timeDiff > 300000) {
                     // 标记为违约
                     reservation.setStatus("违约");
                     reservation.setReservationStatus("违约中");

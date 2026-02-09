@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Delete, Refresh, Download } from '@element-plus/icons-vue'
 import { useReservationStore } from '../../stores/reservation'
@@ -14,7 +14,7 @@ const loading = ref(true)
 
 // 搜索参数
 const queryParams = ref({
-  userName: '',
+  userId: '',
   status: '',
   reservationStatus: '',
   pageNum: 1,
@@ -30,6 +30,13 @@ const pagination = ref({
 
 // 预约列表
 const reservationList = ref([])
+
+// 计算当前页数据
+const currentPageData = computed(() => {
+  const start = (pagination.value.currentPage - 1) * pagination.value.pageSize
+  const end = start + pagination.value.pageSize
+  return reservationList.value.slice(start, end)
+})
 
 // 自习室列表
 const rooms = ref([])
@@ -95,30 +102,42 @@ const getReservations = async () => {
   try {
     // 构造后端API参数
     const params = {
-      userId: queryParams.value.userName ? parseInt(queryParams.value.userName) || undefined : undefined,
-      status: queryParams.value.status,
-      page: queryParams.value.pageNum,
-      size: queryParams.value.pageSize
+      page: queryParams.value.pageNum || 1,
+      size: queryParams.value.pageSize || 10
     }
-    
-    await reservationStore.fetchReservations(params)
-    let filteredReservations = reservationStore.reservations
-    
-    // 前端额外筛选
-    if (queryParams.value.userName) {
-      filteredReservations = filteredReservations.filter(item => 
-        item.userName?.includes(queryParams.value.userName) || 
-        item.userId?.toString().includes(queryParams.value.userName)
-      )
+    if(queryParams.value.userId){
+      params.userId = parseInt(queryParams.value.userId)
     }
-    if (queryParams.value.reservationStatus) {
-      filteredReservations = filteredReservations.filter(item => item.reservationStatus === queryParams.value.reservationStatus)
+    if(queryParams.value.status){
+      params.status = queryParams.value.status
     }
+    if(queryParams.value.reservationStatus){
+      params.reservationStatus = queryParams.value.reservationStatus
+    }
+    // 直接调用后端API
+    const response = await reservationService.getReservationList(params)
     
-    reservationList.value = filteredReservations
-    pagination.value.total = filteredReservations.length
+    if (response.code === 200) {
+      let filteredReservations = response.data
+      
+      // 前端额外筛选
+      if (queryParams.value.userName) {
+        // 只根据userId筛选，因为后端没有userName字段
+        filteredReservations = filteredReservations.filter(item => 
+          item.userId?.toString().includes(queryParams.value.userName)
+        )
+      }
+      if (queryParams.value.reservationStatus) {
+        filteredReservations = filteredReservations.filter(item => item.reservationStatus === queryParams.value.reservationStatus)
+      }
+      
+      reservationList.value = filteredReservations
+      pagination.value.total = filteredReservations.length
+    } else {
+      ElMessage.error('获取预约列表失败：' + response.message)
+    }
   } catch (error) {
-    ElMessage.error('获取预约列表失败')
+    ElMessage.error('获取预约列表失败：' + error.message)
   } finally {
     loading.value = false
   }
@@ -184,13 +203,31 @@ const submitForm = async () => {
     formRef.value.validate(async (valid) => {
       if (valid) {
         try {
+          // 构造与后端实体类一致的参数
+          const reservationData = {
+            userId: form.value.userId,
+            seatId: form.value.seatId,
+            status: form.value.status,
+            reservationStatus: form.value.reservationStatus,
+            reservationInTime: form.value.reservationInTime,
+            reservationOutTime: form.value.reservationOutTime,
+            signInTime: form.value.signInTime,
+            signOutTime: form.value.signOutTime,
+            remark: form.value.remark
+          }
+          
           // 调用后端API更新预约
-          await reservationService.updateReservation(form.value.id, form.value)
-          ElMessage.success('编辑成功')
-          dialogVisible.value = false
-          getReservations()
+          const response = await reservationService.updateReservation(form.value.id, reservationData)
+          
+          if (response.code === 200) {
+            ElMessage.success('编辑成功')
+            dialogVisible.value = false
+            getReservations()
+          } else {
+            ElMessage.error('操作失败：' + response.message)
+          }
         } catch (error) {
-          ElMessage.error('操作失败')
+          ElMessage.error('操作失败：' + error.message)
         }
       }
     })
@@ -210,12 +247,19 @@ const handleDelete = (reservation) => {
       for (const id of ids) {
         // 这里可以调用后端API删除预约
         // 由于后端没有提供删除API，我们可以通过更新预约状态为取消来实现
-        await reservationService.updateReservation(id, { status: 'cancelled', reservationStatus: '取消预约' })
+        const response = await reservationService.updateReservation(id, { 
+          status: 'violation', 
+          reservationStatus: '取消预约' 
+        })
+        
+        if (response.code !== 200) {
+          throw new Error(response.message || '删除失败')
+        }
       }
       ElMessage.success('删除成功')
       getReservations()
     } catch (error) {
-      ElMessage.error('删除失败')
+      ElMessage.error('删除失败：' + error.message)
     }
   }).catch(() => {
     // 取消删除
@@ -292,12 +336,12 @@ onMounted(async () => {
       <div class="search-bar">
         <el-form :model="queryParams" ref="queryForm" size="small" :inline="true">
           <el-form-item label="用户ID/姓名" prop="userName">
-            <el-input v-model="queryParams.userName" placeholder="请输入用户ID或姓名" clearable @keyup.enter.native="handleQuery" />
+            <el-input v-model="queryParams.userId" placeholder="请输入用户ID" clearable @keyup.enter.native="handleQuery" />
           </el-form-item>
           <el-form-item label="状态" prop="status">
             <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
-              <el-option label="正常" value="正常" />
-              <el-option label="违约" value="违约" />
+              <el-option label="正常" value="pending" />
+              <el-option label="违约" value="violation" />
             </el-select>
           </el-form-item>
           <el-form-item label="预约状态" prop="reservationStatus">
@@ -326,7 +370,7 @@ onMounted(async () => {
       <!-- 预约列表 -->
       <el-table
         v-loading="loading"
-        :data="reservationList"
+        :data="currentPageData"
         style="width: 100%"
         border
         stripe
@@ -338,7 +382,7 @@ onMounted(async () => {
         <el-table-column prop="seatId" label="座位ID" width="100" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="scope">
-            <el-tag type="success" v-if="scope.row.status === '正常'">正常</el-tag>
+            <el-tag type="success" v-if="scope.row.status === 'pending'">正常</el-tag>
             <el-tag type="danger" v-else>违约</el-tag>
           </template>
         </el-table-column>
@@ -386,8 +430,8 @@ onMounted(async () => {
       <el-form ref="formRef" :model="form" :rules="rules" label-width="auto">
         <el-form-item label="状态" prop="status">
           <el-select v-model="form.status" placeholder="请选择状态" clearable>
-            <el-option label="正常" value="正常" />
-            <el-option label="违约" value="违约" />
+            <el-option label="正常" value="pending" />
+            <el-option label="违约" value="violation" />
           </el-select>
         </el-form-item>
         <el-form-item label="预约状态" prop="reservationStatus">

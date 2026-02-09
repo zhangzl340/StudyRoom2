@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox, roleTypes } from 'element-plus'
 import { Search, Plus, Edit, Delete, Refresh, Download, Upload, User } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
@@ -27,6 +27,13 @@ const pagination = ref({
 
 // 用户列表
 const userList = ref([])
+
+// 计算当前页数据
+const currentPageData = computed(() => {
+  const start = (pagination.value.currentPage - 1) * pagination.value.pageSize
+  const end = start + pagination.value.pageSize
+  return userList.value.slice(start, end)
+})
 
 // 对话框状态
 const dialogVisible = ref(false)
@@ -373,7 +380,7 @@ const formatDateTime = (dateTime) => {
       <!-- 用户列表 -->
       <el-table
         v-loading="loading"
-        :data="userList"
+        :data="currentPageData"
         style="width: 100%"
         border
         stripe
