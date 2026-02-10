@@ -36,6 +36,8 @@ public class User implements Serializable {
 
     private Long collegeId;
 
+    private String avatar;
+
     @TableField(fill = FieldFill.INSERT)
     private Date createdAt;
 

@@ -400,7 +400,7 @@ onUnmounted(() => {
     <!-- 我的信息 -->
     <div class="my-info">
       <div class="info">
-        <el-avatar :size="60" :src="authStore.userInfo?.avatar || ''" class="user-avatar">
+        <el-avatar :size="60" :src="authStore.userInfo?.avatar ? getFullImageUrl(authStore.userInfo.avatar) : 'https://via.placeholder.com/60'" class="user-avatar">
           {{ authStore.userInfo?.username?.charAt(0) || '用' }}
         </el-avatar>
         <div class="name">

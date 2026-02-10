@@ -182,6 +182,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         existingUser.setRealName(user.getRealName());
         existingUser.setEmail(user.getEmail());
         existingUser.setPhone(user.getPhone());
+        existingUser.setAvatar(user.getAvatar());
 
         if (updateById(existingUser)) {
             return Result.success("个人信息更新成功");

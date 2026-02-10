@@ -83,7 +83,7 @@ const exportData = () => {
   ElMessage.success('数据导出成功')
 }
 
-// 使用率趋势图（折线+面积填充）
+// 预约趋势图（折线+面积填充）
 const initTrendChart = async () => {
   const chartDom = document.getElementById('trend-chart')
   if (!chartDom) return
@@ -97,12 +97,12 @@ const initTrendChart = async () => {
     const data = await response.json()
     
     let dates = ['12/29', '12/30', '12/31', '1/1', '1/2', '1/3', '1/4']
-    let usageRates = [65, 72, 58, 45, 35, 42, 68]
+    let reservationCounts = [65, 72, 58, 45, 35, 42, 68]
     
     if (data.success && data.data) {
       const trendData = data.data
       dates = trendData.map(item => item.date)
-      usageRates = trendData.map(item => item.usageRate)
+      reservationCounts = trendData.map(item => item.count)
     }
     
     const option = {
@@ -116,14 +116,14 @@ const initTrendChart = async () => {
       },
       yAxis: {
         type: 'value',
-        name: '使用率(%)',
+        name: '预约数',
         nameTextStyle: { color: '#666' },
         axisLine: { lineStyle: { color: '#e0e0e0' } },
         axisLabel: { color: '#666' },
         splitLine: { lineStyle: { color: '#f0f0f0' } }
       },
       series: [{
-        data: usageRates,
+        data: reservationCounts,
         type: 'line',
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -154,7 +154,7 @@ const initTrendChart = async () => {
       },
       yAxis: {
         type: 'value',
-        name: '使用率(%)',
+        name: '预约数',
         nameTextStyle: { color: '#666' },
         axisLine: { lineStyle: { color: '#e0e0e0' } },
         axisLabel: { color: '#666' },
@@ -195,16 +195,10 @@ const initHeatRankChart = async () => {
     const response = await fetch('/api/dashboard/room/ranking')
     const data = await response.json()
     
-    let roomData = [
-      { name: '图书馆A区', value: 95 },
-      { name: '教学楼B301', value: 82 },
-      { name: '图书馆C区', value: 70 },
-      { name: '实验楼D202', value: 61 },
-      { name: '教学楼A105', value: 40 }
-    ]
+    let roomData = []
     
     if (data.success && data.data) {
-      roomData = data.data
+      roomData = data.data.sort((a, b) => a.value - b.value)
     }
     
     const option = {
@@ -245,13 +239,7 @@ const initHeatRankChart = async () => {
   } catch (error) {
     console.error('获取自习室热度排行失败:', error)
     // 使用默认数据
-    const roomData = [
-      { name: '图书馆A区', value: 95 },
-      { name: '教学楼B301', value: 82 },
-      { name: '图书馆C区', value: 70 },
-      { name: '实验楼D202', value: 61 },
-      { name: '教学楼A105', value: 40 }
-    ]
+    const roomData = []
     
     const option = {
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
@@ -440,7 +428,7 @@ const initHeatmapChart = async () => {
     const data = await response.json()
     
     const hours = Array.from({ length: 24 }, (_, i) => i)
-    let rooms = ['图书馆A区', '教学楼B301', '图书馆C区', '实验楼D202', '教学楼A105']
+    let rooms = []
     let heatmapData = []
     
     if (data.success && data.data) {
@@ -514,7 +502,7 @@ const initHeatmapChart = async () => {
     console.error('获取热力图数据失败:', error)
     // 使用默认数据
     const hours = Array.from({ length: 24 }, (_, i) => i)
-    const rooms = ['图书馆A区', '教学楼B301', '图书馆C区', '实验楼D202', '教学楼A105']
+    const rooms = []
     const data = []
     
     rooms.forEach((_, roomIndex) => {
@@ -663,7 +651,7 @@ const cleanupCharts = () => {
               {{ Math.abs(stats.yesterdayReservationChange) }}%
             </span>
             <span v-else>
-              无变化
+              <!-- 无变化 -->
             </span>
           </span>
         </div>
@@ -672,7 +660,7 @@ const cleanupCharts = () => {
         <div class="card stat-card">
           <span class="stat-label">爽约率</span>
           <span class="stat-value highlight-red">{{ stats.noShowRate }}%</span>
-          <span class="stat-rate">较昨日 -0.5%</span>
+          <span class="stat-rate"></span>
         </div>
       </el-col>
     </el-row>
@@ -688,9 +676,9 @@ const cleanupCharts = () => {
     <!-- 使用率趋势图 -->
     <div class="card">
       <h3 class="card-title">
-        <DataLine class="icon-small" />
-        使用率趋势图（近7天）
-      </h3>
+          <DataLine class="icon-small" />
+          预约趋势图（近7天）
+        </h3>
       <div id="trend-chart" class="chart-container"></div>
     </div>
 
@@ -700,7 +688,7 @@ const cleanupCharts = () => {
         <div class="card">
           <h3 class="card-title">
             <OfficeBuilding class="icon-small" />
-            自习室热度排行 (当前在室人数)
+            自习室热度排行 (总预约人数)
           </h3>
           <div id="heat-rank-chart" class="small-chart-container"></div>
         </div>
@@ -709,7 +697,7 @@ const cleanupCharts = () => {
         <div class="card">
           <h3 class="card-title">
             <User class="icon-small" />
-            用户学院分布 (当前在室人数)
+            用户学院分布 
           </h3>
           <div id="college-chart" class="small-chart-container"></div>
         </div>

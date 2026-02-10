@@ -2,12 +2,14 @@ package com.studyroom.controller;
 
 import com.studyroom.entity.User;
 import com.studyroom.service.UserService;
+import com.studyroom.utils.FileUploadUtil;
 import com.studyroom.utils.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.util.DigestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "用户模块",description = "处理用户CRUD")
 @RestController
@@ -16,6 +18,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private FileUploadUtil fileUploadUtil;
 
     @Operation(summary = "获取用户列表")
     @GetMapping("/list")
@@ -109,5 +114,21 @@ public class UserController {
     @GetMapping("/profile")
     public Result<?> getProfile(@RequestParam Long userId) {
         return userService.getUserInfo(userId);
+    }
+    
+    @Operation(summary = "上传头像")
+    @PostMapping("/upload/avatar")
+    public Result<?> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        try {
+            String imageUrl = fileUploadUtil.uploadImage(file);
+            if (imageUrl != null) {
+                return Result.success("上传成功", imageUrl);
+            } else {
+                return Result.error("上传失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("上传失败：" + e.getMessage());
+        }
     }
 }

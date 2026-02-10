@@ -189,6 +189,24 @@ INSERT INTO `system_settings` VALUES (11, 'credit.maximum', '100', '最高信用
 INSERT INTO `system_settings` VALUES (12, 'credit.recovery_rate', '1', '每天信用分恢复速率', '2026-01-30 17:34:29');
 
 -- ----------------------------
+-- Table structure for colleges
+-- ----------------------------
+DROP TABLE IF EXISTS `colleges`;
+CREATE TABLE `colleges`  (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学院名称',
+  `color` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '学院颜色',
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_name`(`name` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '学院表' ROW_FORMAT = DYNAMIC;
+
+-- ----------------------------
+-- Records of colleges
+-- ----------------------------
+
+-- ----------------------------
 -- Table structure for users
 -- ----------------------------
 DROP TABLE IF EXISTS `users`;
@@ -202,11 +220,15 @@ CREATE TABLE `users`  (
   `role` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '角色：student, admin',
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '状态：active, inactive',
   `credit_score` int NULL DEFAULT 100 COMMENT '信用分',
+  `college_id` bigint NULL DEFAULT NULL COMMENT '学院ID',
+  `avatar` varchar(255) NULL DEFAULT NULL COMMENT '头像',
   `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `uk_username`(`username` ASC) USING BTREE,
-  UNIQUE INDEX `uk_email`(`email` ASC) USING BTREE
+  UNIQUE INDEX `uk_email`(`email` ASC) USING BTREE,
+  INDEX `idx_college`(`college_id` ASC) USING BTREE,
+  CONSTRAINT `users_ibfk_1` FOREIGN KEY (`college_id`) REFERENCES `colleges` (`id`) ON DELETE SET NULL ON UPDATE RESTRICT
 ) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '用户表' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Edit, Delete, Refresh, Download, Upload, User } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Refresh, Download, Upload, User, Picture, Loading } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
 import axios from 'axios'
 
@@ -51,7 +51,8 @@ const form = ref({
   gender: '',
   status: 'active',
   role:'student',
-  collegeId: ''
+  collegeId: '',
+  avatar: ''
 })
 
 // 表单验证规则
@@ -123,6 +124,12 @@ const multiple = ref(true)
 // 日期范围
 const dateRange = ref([])
 
+// 头像相关状态
+const uploadLoading = ref(false)
+const imageUrl = ref('')
+const previewDialogVisible = ref(false)
+const previewImage = ref('')
+
 // 获取用户列表
 const getUsers = async () => {
   loading.value = true
@@ -189,8 +196,10 @@ const openAddDialog = () => {
     gender: '',
     status: 'active',
     role:'student', // 默认角色
-    collegeId: ''
+    collegeId: '',
+    avatar: ''
   }
+  imageUrl.value = ''
   dialogVisible.value = true
   
   // 重置表单验证
@@ -214,7 +223,14 @@ const openEditDialog = (user) => {
     gender: user.gender || '',
     status: user.status || 'active',
     role: user.role || 'student',   //角色字段
-    collegeId: user.college_id || user.collegeId || '' // 学院id字段
+    collegeId: user.college_id || user.collegeId || '', // 学院id字段
+    avatar: user.avatar || '' // 头像字段
+  }
+  // 设置图片预览
+  if (user.avatar) {
+    imageUrl.value = getFullImageUrl(user.avatar)
+  } else {
+    imageUrl.value = ''
   }
   dialogVisible.value = true
   
@@ -242,7 +258,8 @@ const submitForm = async () => {
       gender: form.value.gender,
       status: form.value.status,
       role: form.value.role,
-      collegeId: form.value.collegeId
+      collegeId: form.value.collegeId,
+      avatar: form.value.avatar
     }
     
     // 如果是添加用户，需要密码；编辑用户不需要密码
@@ -359,6 +376,127 @@ const formatDateTime = (dateTime) => {
   }
 }
 
+// 获取完整图片URL的方法
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return ''
+  // 如果已经是完整的URL，直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath
+  }
+  
+  // 如果是以 / 开头，表示是绝对路径
+  if (imagePath.startsWith('/')) {
+    // 根据后端地址拼接完整URL
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const fullUrl = `${baseURL}/api${imagePath}`
+    return fullUrl
+  }
+  
+  // 其他情况直接返回
+  return imagePath
+}
+
+// 文件上传前的验证
+const beforeImageUpload = (file) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt2M = file.size / 1024 / 1024 < 2
+  
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件!')
+    return false
+  }
+  
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB!')
+    return false
+  }
+  
+  return true
+}
+
+// 图片上传方法
+const handleImageUpload = async (file) => {
+  if(!beforeImageUpload(file.raw)){
+    return false;
+  }
+  uploadLoading.value = true
+  try {
+    // 创建FormData对象
+    const formData = new FormData()
+    formData.append('file', file.raw)
+    
+    // 调用后端API上传图片
+    const response = await axios.post('/api/user/upload/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    if (response.data.success) {
+      const uploadedImageUrl = response.data.data
+      
+      if (uploadedImageUrl) {
+        // 更新表单和预览
+        form.value.avatar = uploadedImageUrl
+        imageUrl.value = getFullImageUrl(uploadedImageUrl)
+        
+        ElMessage.success('头像上传成功')
+      } else {
+        ElMessage.error('上传成功但未返回图片URL')
+      }
+    } else {
+      ElMessage.error(response.data.message || '头像上传失败')
+    }
+  } catch (error) {
+    console.error('头像上传失败:', error)
+    ElMessage.error('头像上传失败: ' + (error.message || '网络错误'))
+  } finally {
+    uploadLoading.value = false
+  }
+  
+  return false // 阻止自动上传
+}
+
+// 图片删除方法
+const handleImageRemove = () => {
+  form.value.avatar = ''
+  imageUrl.value = ''
+  ElMessage.info('已移除头像')
+}
+
+// 图片预览方法
+const handleImagePreview = () => {
+  if (imageUrl.value) {
+    previewImage.value = imageUrl.value
+    previewDialogVisible.value = true
+  } else {
+    ElMessage.warning('请先上传头像')
+  }
+}
+
+// 复制图片URL到剪贴板
+const copyImageUrl = () => {
+  if (!form.value.avatar) {
+    ElMessage.warning('没有头像URL可复制')
+    return
+  }
+  
+  // 使用现代API
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(form.value.avatar)
+      .then(() => {
+        ElMessage.success('头像URL已复制到剪贴板')
+      })
+      .catch(() => {
+        // 备用方法
+        console.error('复制失败，使用备用方法')
+      })
+  } else {
+    // 备用方法
+    console.error('浏览器不支持剪贴板API')
+  }
+}
+
 
 </script>
 
@@ -425,6 +563,25 @@ const formatDateTime = (dateTime) => {
       >
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column prop="id" label="用户编号" width="100" />
+        <el-table-column label="头像" width="100" align="center">
+          <template #default="scope">
+            <div class="user-avatar-preview">
+              <el-image
+                :src="scope.row.avatar ? getFullImageUrl(scope.row.avatar) : 'https://via.placeholder.com/40'"
+                :preview-src-list="scope.row.avatar ? [getFullImageUrl(scope.row.avatar)] : []"
+                fit="cover"
+                style="width: 40px; height: 40px; border-radius: 50%;"
+                preview-teleported
+              >
+                <template #error>
+                  <div class="avatar-error">
+                    <el-icon><User /></el-icon>
+                  </div>
+                </template>
+              </el-image>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="username" label="用户名称" show-overflow-tooltip min-width="120" />
         <el-table-column prop="realName" label="真实姓名" show-overflow-tooltip min-width="120" />
         <el-table-column prop="role" label="角色" width="100">
@@ -585,6 +742,65 @@ const formatDateTime = (dateTime) => {
             </el-form-item>
           </el-col>
         </el-row>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="头像">
+              <el-upload
+                class="image-uploader"
+                :show-file-list="false"
+                :on-change="handleImageUpload"
+                :before-upload="() => false"
+                :loading="uploadLoading"
+                accept="image/*"
+                :disabled="uploadLoading"
+              >
+                <div v-if="imageUrl" class="image-preview">
+                  <img :src="imageUrl" alt="用户头像" />
+                  <div class="image-overlay">
+                    <el-icon><Picture /></el-icon>
+                    <span>点击更换</span>
+                  </div>
+                  <div v-if="uploadLoading" class="uploading-overlay">
+                    <el-icon class="loading-icon">
+                      <Loading />
+                    </el-icon>
+                    <span>上传中...</span>
+                  </div>
+                </div>
+                <el-button
+                  v-else 
+                  type="primary" 
+                  :icon="Upload" 
+                  :loading="uploadLoading"
+                  :disabled="uploadLoading">
+                  {{ uploadLoading ? '上传中...' : '上传头像' }}
+                </el-button>
+              </el-upload>
+              <div v-if="imageUrl" class="image-actions">
+                <el-button size="small" type="info" @click="handleImagePreview">
+                  预览
+                </el-button>
+                <el-button size="small" type="danger" @click="handleImageRemove">
+                  删除
+                </el-button>
+                <el-button size="small" type="success" @click="copyImageUrl" :disabled="uploadLoading">
+                  复制URL
+                </el-button>
+              </div>
+              <div class="upload-tip">
+                支持 JPG、PNG 格式，大小不超过 2MB
+              </div>
+              <div v-if="form.avatar" class="image-url">
+                <el-input v-model="form.avatar" placeholder="头像URL" readonly>
+                  <template #append>
+                    <el-button @click="copyImageUrl" />
+                  </template>
+                </el-input>
+              </div>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -592,6 +808,14 @@ const formatDateTime = (dateTime) => {
           确定
         </el-button>
       </template>
+    </el-dialog>
+    
+    <!-- 图片预览对话框 -->
+    <el-dialog v-model="previewDialogVisible" title="头像预览" width="400px" :close-on-click-modal="false">
+      <div class="preview-container">
+        <img v-if="previewImage" :src="previewImage" alt="预览" />
+        <div v-else class="no-image">暂无图片</div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -633,6 +857,191 @@ const formatDateTime = (dateTime) => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+  }
+  
+  .user-avatar-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .avatar-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    color: #999;
+  }
+  
+  .form-tip {
+    margin-left: 10px;
+    color: #909399;
+    font-size: 12px;
+  }
+  
+  .upload-tip {
+    margin-top: 8px;
+    color: #909399;
+    font-size: 12px;
+  }
+}
+
+/* 图片上传样式 */
+.image-uploader {
+  .el-button {
+    width: 150px;
+  }
+  
+  .image-preview {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border: 1px dashed #dcdfe6;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    &:hover {
+      .image-overlay {
+        opacity: 1;
+      }
+    }
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    
+    .image-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      border-radius: 50%;
+      
+      .el-icon {
+        font-size: 24px;
+        margin-bottom: 5px;
+      }
+      
+      span {
+        font-size: 12px;
+      }
+    }
+  }
+  .image-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      border-radius: 50%;
+      
+      .el-icon {
+        font-size: 24px;
+        margin-bottom: 5px;
+      }
+      
+      span {
+        font-size: 12px;
+      }
+    }
+  .uploading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.9);
+      color: #666;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      
+      .loading-icon {
+        font-size: 24px;
+        margin-bottom: 8px;
+        animation: rotating 2s linear infinite;
+      }
+      
+      span {
+        font-size: 12px;
+      }
+    }
+  
+}
+@keyframes rotating {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.image-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+    .el-button {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
+
+.image-url {
+  margin-top: 10px;
+  
+  .el-input {
+    input {
+      cursor: default;
+      font-size: 12px;
+      color: #666;
+    }
+  }
+}
+.upload-tip {
+  margin-top: 8px;
+  color: #909399;
+  font-size: 12px;
+}
+.preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  
+  img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    object-fit: contain;
+  }
+  
+  .no-image {
+    color: #909399;
+    font-size: 14px;
   }
 }
 

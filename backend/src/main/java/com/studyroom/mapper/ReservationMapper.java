@@ -29,4 +29,6 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     int countNoShowReservations();
     
     int countTotalReservations();
+    
+    java.util.List<java.util.Map<String, Object>> countReservationsByDateRange(java.util.Date startDate, java.util.Date endDate);
 }

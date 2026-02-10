@@ -30,4 +30,43 @@
         SELECT * FROM rooms WHERE location = #{location} ORDER BY name
     </select>
 
+    <!-- 查询自习室热度排行 -->
+    <select id="selectRoomRanking" resultType="java.util.Map">
+        SELECT 
+            r.name, 
+            COUNT(res.id) as value
+        FROM 
+            rooms r
+        LEFT JOIN 
+            seats s ON r.id = s.room_id
+        LEFT JOIN 
+            reservations res ON s.id = res.seat_id
+        GROUP BY 
+            r.id, r.name
+        ORDER BY 
+            value DESC
+        LIMIT 5
+    </select>
+
+    <!-- 查询自习室24小时热力图数据 -->
+    <select id="selectRoomHeatmapData" resultType="java.util.Map">
+        SELECT 
+            r.name as room_name, 
+            HOUR(res.reservation_in_time) as hour, 
+            COUNT(res.id) as count
+        FROM 
+            rooms r
+        LEFT JOIN 
+            seats s ON r.id = s.room_id
+        LEFT JOIN
+            reservations res ON s.id = res.seat_id
+        WHERE
+            res.reservation_in_time IS NOT NULL
+          AND res.reservation_in_time >= NOW() - INTERVAL 24 HOUR
+        GROUP BY 
+            r.id, r.name, HOUR(res.reservation_in_time)
+        ORDER BY 
+            r.name, hour
+    </select>
+
 </mapper>

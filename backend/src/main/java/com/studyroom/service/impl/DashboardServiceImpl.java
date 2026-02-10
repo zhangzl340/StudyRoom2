@@ -1,6 +1,7 @@
 package com.studyroom.service.impl;
 
 import com.studyroom.mapper.ReservationMapper;
+import com.studyroom.mapper.RoomMapper;
 import com.studyroom.service.DashboardService;
 import com.studyroom.service.ReservationService;
 import com.studyroom.service.RoomService;
@@ -34,6 +35,9 @@ public class DashboardServiceImpl implements DashboardService {
     
     @Autowired
     private ReservationMapper reservationMapper;
+    
+    @Autowired
+    private RoomMapper roomMapper;
 
     @Override
     public Result<?> getDashboardStatistics() {
@@ -90,24 +94,52 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public Result<?> getUsageTrend() {
         try {
-            log.info("=== 获取使用率趋势数据 ===");
+            log.info("=== 获取预约趋势数据 ===");
 
-            // 生成近7天的使用率数据
+            // 计算近7天的开始日期和结束日期
+            java.util.Calendar calendar = java.util.Calendar.getInstance();
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, -6); // 7天前
+            java.util.Date startDate = calendar.getTime();
+            java.util.Date endDate = new java.util.Date(); // 今天
+
+            log.info("开始日期: {}, 结束日期: {}", startDate, endDate);
+
+            // 从数据库获取近7天的预约数据
+            List<Map<String, Object>> reservationData = reservationMapper.countReservationsByDateRange(startDate, endDate);
+            log.info("数据库返回的预约数据: {}", reservationData);
+
+            // 构建完整的近7天数据，包括没有预约的日期
             List<Map<String, Object>> trendData = new ArrayList<>();
-            String[] dates = {"12/29", "12/30", "12/31", "1/1", "1/2", "1/3", "1/4"};
-            int[] usageRates = {65, 72, 58, 45, 35, 42, 68};
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/dd");
+            java.text.SimpleDateFormat dbSdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
 
-            for (int i = 0; i < dates.length; i++) {
+            // 创建日期到预约数的映射
+            java.util.Map<String, Integer> reservationMap = new java.util.HashMap<>();
+            for (Map<String, Object> item : reservationData) {
+                String dateStr = item.get("date").toString();
+                Integer count = Integer.parseInt(item.get("count").toString());
+                reservationMap.put(dateStr, count);
+            }
+
+            // 生成近7天的日期数据
+            for (int i = 0; i < 7; i++) {
+                java.util.Calendar currentCalendar = java.util.Calendar.getInstance();
+                currentCalendar.add(java.util.Calendar.DAY_OF_YEAR, -6 + i);
+                java.util.Date currentDate = currentCalendar.getTime();
+                String dateKey = dbSdf.format(currentDate);
+                String dateLabel = sdf.format(currentDate);
+                
                 Map<String, Object> dataPoint = new HashMap<>();
-                dataPoint.put("date", dates[i]);
-                dataPoint.put("usageRate", usageRates[i]);
+                dataPoint.put("date", dateLabel);
+                dataPoint.put("count", reservationMap.getOrDefault(dateKey, 0));
                 trendData.add(dataPoint);
             }
 
+            log.info("生成的预约趋势数据: {}", trendData);
             return Result.success(trendData);
         } catch (Exception e) {
-            log.error("获取使用率趋势数据失败", e);
-            return Result.error("获取使用率趋势数据失败: " + e.getMessage());
+            log.error("获取预约趋势数据失败", e);
+            return Result.error("获取预约趋势数据失败: " + e.getMessage());
         }
     }
 
@@ -116,13 +148,14 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             log.info("=== 获取自习室热度排行 ===");
 
-            // 生成自习室热度数据
-            List<Map<String, Object>> rankingData = new ArrayList<>();
-            rankingData.add(Map.of("name", "图书馆A区", "value", 95));
-            rankingData.add(Map.of("name", "教学楼B301", "value", 82));
-            rankingData.add(Map.of("name", "图书馆C区", "value", 70));
-            rankingData.add(Map.of("name", "实验楼D202", "value", 61));
-            rankingData.add(Map.of("name", "教学楼A105", "value", 40));
+            // 从数据库获取自习室热度排行数据
+            List<Map<String, Object>> rankingData = roomMapper.selectRoomRanking();
+            log.info("自习室热度排行数据: {}", rankingData);
+
+            // 如果没有数据，返回空列表
+            if (rankingData == null || rankingData.isEmpty()) {
+                return Result.success(new ArrayList<>());
+            }
 
             return Result.success(rankingData);
         } catch (Exception e) {
@@ -158,25 +191,68 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             log.info("=== 获取24小时热力图数据 ===");
 
-            // 生成24小时热力图数据
-            List<String> rooms = List.of("图书馆A区", "教学楼B301", "图书馆C区", "实验楼D202", "教学楼A105");
+            // 从数据库获取自习室24小时热力图数据
+            List<Map<String, Object>> heatmapRawData = roomMapper.selectRoomHeatmapData();
+            log.info("热力图原始数据: {}", heatmapRawData);
+
+            // 提取所有自习室名称
+            java.util.Set<String> roomSet = new java.util.HashSet<>();
+            // 直接从数据库获取所有自习室，确保即使没有预约记录也能显示
+            Result<?> roomResult = roomService.getRoomList(null, null, null, null, null);
+            if (roomResult.isSuccess() && roomResult.getData() instanceof List) {
+                List<?> allRooms = (List<?>) roomResult.getData();
+                for (Object room : allRooms) {
+                    if (room instanceof com.studyroom.entity.Room) {
+                        com.studyroom.entity.Room roomEntity = (com.studyroom.entity.Room) room;
+                        roomSet.add(roomEntity.getName());
+                    }
+                }
+            }
+
+            List<String> rooms = new java.util.ArrayList<>(roomSet);
+
+            // 如果没有自习室数据，使用默认自习室
+            if (rooms.isEmpty()) {
+                rooms = List.of("图书馆A区", "教学楼B301", "图书馆C区", "实验楼D202", "教学楼A105");
+            }
+
+            // 构建热力图数据
             List<List<Object>> heatmapData = new ArrayList<>();
 
-            for (int roomIndex = 0; roomIndex < rooms.size(); roomIndex++) {
-                for (int hour = 0; hour < 24; hour++) {
-                    int occupancyRate;
-                    if (hour >= 7 && hour <= 23) {
-                        // 不同自习室的基础热度
-                        int[] baseRates = {80, 75, 70, 65, 60};
-                        int baseRate = baseRates[roomIndex];
-                        // 高峰时段（18:00-22:00）热度提升
-                        double peakFactor = (hour >= 18 && hour <= 22) ? 1.2 : 1;
-                        // 随机波动
-                        occupancyRate = Math.min(100, (int) Math.round(baseRate * peakFactor * (0.9 + Math.random() * 0.2)));
-                    } else {
-                        // 非营业时间，热度较低
-                        occupancyRate = (int) Math.round(Math.random() * 10);
+            // 创建房间索引映射
+            java.util.Map<String, Integer> roomIndexMap = new java.util.HashMap<>();
+            for (int i = 0; i < rooms.size(); i++) {
+                roomIndexMap.put(rooms.get(i), i);
+            }
+
+            // 构建小时到房间到预约数的映射
+            java.util.Map<Integer, java.util.Map<String, Integer>> hourRoomCountMap = new java.util.HashMap<>();
+            for (Map<String, Object> item : heatmapRawData) {
+                try {
+                    String roomName = item.get("room_name").toString();
+                    Object hourObj = item.get("hour");
+                    if (hourObj != null) {
+                        int hour = Integer.parseInt(hourObj.toString());
+                        Object countObj = item.get("count");
+                        int count = countObj != null ? Integer.parseInt(countObj.toString()) : 0;
+
+                        hourRoomCountMap.computeIfAbsent(hour, k -> new java.util.HashMap<>())
+                                .put(roomName, count);
                     }
+                } catch (Exception e) {
+                    log.warn("处理热力图数据时出现异常: {}", e.getMessage());
+                    continue;
+                }
+            }
+
+            // 生成热力图数据
+            for (int roomIndex = 0; roomIndex < rooms.size(); roomIndex++) {
+                String roomName = rooms.get(roomIndex);
+                for (int hour = 0; hour < 24; hour++) {
+                    java.util.Map<String, Integer> roomCountMap = hourRoomCountMap.get(hour);
+                    int count = roomCountMap != null ? roomCountMap.getOrDefault(roomName, 0) : 0;
+                    // 将预约数转换为占用率（假设每个自习室有100个座位）
+                    int occupancyRate = Math.min(100, count * 10); // 简化计算，实际应该根据座位数计算
                     heatmapData.add(List.of(hour, roomIndex, occupancyRate));
                 }
             }
@@ -185,6 +261,7 @@ public class DashboardServiceImpl implements DashboardService {
             result.put("rooms", rooms);
             result.put("data", heatmapData);
 
+            log.info("24小时热力图数据: {}", result);
             return Result.success(result);
         } catch (Exception e) {
             log.error("获取24小时热力图数据失败", e);

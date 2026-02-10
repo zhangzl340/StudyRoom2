@@ -20,6 +20,7 @@ import {
 import { useAuthStore } from '../../stores/auth'
 import { useRouter } from 'vue-router'
 import { useReservationStore } from '../../stores/reservation'
+import axios from 'axios'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -112,6 +113,8 @@ const requestUpload = () => { }
 const beforeUpload = (file) => {
   if (file.type.indexOf("image/") === -1) {
     ElMessage.error('文件格式错误，请上传图片类型,如：JPG，PNG后缀的文件。')
+  } else if (file.size / 1024 / 1024 > 2) {
+    ElMessage.error('图片大小不能超过 2MB!')
   } else {
     avatarFile.value = file
     const reader = new FileReader()
@@ -122,11 +125,42 @@ const beforeUpload = (file) => {
   }
 }
 
-const updateAvatarBtn = () => {
+const updateAvatarBtn = async () => {
   if (avatarFile.value) {
-    // 这里可以调用后端API上传头像
-    ElMessage.success('修改成功')
-    avatarShow.value = false
+    try {
+      // 创建FormData对象
+      const formData = new FormData()
+      formData.append('file', avatarFile.value)
+      
+      // 调用后端API上传头像
+      const response = await axios.post('/api/user/upload/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      
+      if (response.data.success) {
+        const avatarUrl = response.data.data
+        
+        // 更新用户信息中的头像
+        if (authStore.userInfo) {
+          authStore.userInfo.avatar = avatarUrl
+        }
+        
+        // 调用updateUserInfo更新后端用户信息
+        await axios.put(`/api/user/update/${authStore.userInfo?.id}`, {
+          avatar: avatarUrl
+        })
+        
+        ElMessage.success('修改成功')
+        avatarShow.value = false
+      } else {
+        ElMessage.error(response.data.message || '修改失败')
+      }
+    } catch (error) {
+      console.error('上传头像失败:', error)
+      ElMessage.error('修改失败，请重试')
+    }
   } else {
     ElMessage.error('请选择图片文件')
   }
@@ -146,10 +180,30 @@ const editProfile = () => {
   }
 }
 
-const saveProfile = () => {
-  // 这里可以调用后端API更新用户信息
-  ElMessage.success('保存成功')
-  editProfileShow.value = false
+const saveProfile = async () => {
+  try {
+    // 调用后端API更新用户信息
+    await axios.put(`/api/user/update/${authStore.userInfo?.id}`, {
+      realName: profileForm.value.nickName,
+      phone: profileForm.value.phonenumber,
+      email: profileForm.value.email,
+      gender: profileForm.value.sex
+    })
+    
+    // 更新本地存储的用户信息
+    if (authStore.userInfo) {
+      authStore.userInfo.realName = profileForm.value.nickName
+      authStore.userInfo.phone = profileForm.value.phonenumber
+      authStore.userInfo.email = profileForm.value.email
+      authStore.userInfo.gender = profileForm.value.sex
+    }
+    
+    ElMessage.success('保存成功')
+    editProfileShow.value = false
+  } catch (error) {
+    console.error('更新个人信息失败:', error)
+    ElMessage.error('保存失败，请重试')
+  }
 }
 
 // 修改密码
@@ -203,6 +257,26 @@ const getRecord = async () => {
   }
 }
 
+// 获取完整图片URL的方法
+const getFullImageUrl = (imagePath) => {
+  if (!imagePath) return ''
+  // 如果已经是完整的URL，直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath
+  }
+  
+  // 如果是以 / 开头，表示是绝对路径
+  if (imagePath.startsWith('/')) {
+    // 根据后端地址拼接完整URL
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+    const fullUrl = `${baseURL}/api${imagePath}`
+    return fullUrl
+  }
+  
+  // 其他情况直接返回
+  return imagePath
+}
+
 // 退出登录
 const exit = () => {
   ElMessageBox.confirm('是否确定退出登录？', '提示', {
@@ -221,7 +295,7 @@ const exit = () => {
     <div class="profile-card">
       <div class="profile-header">
         <div class="avatar-section">
-          <el-avatar :size="80" :src="authStore.userInfo?.avatar || ''" @click="updateAvatar" class="user-avatar">
+          <el-avatar :size="80" :src="authStore.userInfo?.avatar ? getFullImageUrl(authStore.userInfo.avatar) : 'https://via.placeholder.com/80'" @click="updateAvatar" class="user-avatar">
             {{ authStore.userInfo?.username?.charAt(0) || '用' }}
           </el-avatar>
           <div class="avatar-edit">

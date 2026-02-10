@@ -6,6 +6,6 @@ backend/.idea/
 
 frontend/example
 
-backend/upload
-backend/logs
-backend/target
+backend/upload/
+backend/logs/
+backend/target/

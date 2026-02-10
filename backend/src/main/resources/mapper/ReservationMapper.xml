@@ -90,4 +90,15 @@
         SELECT COUNT(*) FROM reservations
     </select>
 
+    <!-- 统计指定日期范围内的预约数 -->
+    <select id="countReservationsByDateRange" resultType="java.util.Map">
+        SELECT 
+            DATE(reservation_in_time) AS date, 
+            COUNT(*) AS count 
+        FROM reservations
+        WHERE DATE(reservation_in_time) BETWEEN DATE(#{startDate}) AND DATE(#{endDate})
+        GROUP BY DATE(reservation_in_time)
+        ORDER BY DATE(reservation_in_time)
+    </select>
+
 </mapper>
